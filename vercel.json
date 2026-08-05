@@ -1,0 +1,5 @@
+{
+  "crons": [
+    { "path": "/api/cron/recarga-vale", "schedule": "0 12 * * *" }
+  ]
+}

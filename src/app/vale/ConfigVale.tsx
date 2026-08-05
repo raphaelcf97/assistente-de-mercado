@@ -41,8 +41,8 @@ export default function ConfigVale({
   }
 
   return (
-    <form onSubmit={salvar} className="rounded-lg border border-neutral-200 bg-white p-4">
-      <h2 className="mb-3 text-sm font-medium text-neutral-700">Recarga mensal automática</h2>
+    <form onSubmit={salvar} className="rounded-lg border border-alelo-100 bg-white p-4">
+      <h2 className="mb-3 text-sm font-medium text-alelo-800">Recarga mensal automática</h2>
       <div className="mb-3 flex gap-3">
         <div className="flex-1">
           <label className="mb-1 block text-xs text-neutral-500">Valor (R$)</label>
@@ -51,7 +51,7 @@ export default function ConfigVale({
             step="0.01"
             value={valorRecarga}
             onChange={(e) => setValorRecarga(e.target.value)}
-            className="w-full rounded-lg border border-neutral-300 px-3 py-2"
+            className="w-full rounded-lg border border-alelo-200 px-3 py-2 outline-none focus:border-alelo-500"
           />
         </div>
         <div className="flex-1">
@@ -62,14 +62,14 @@ export default function ConfigVale({
             max={28}
             value={diaDoMes}
             onChange={(e) => setDiaDoMes(e.target.value)}
-            className="w-full rounded-lg border border-neutral-300 px-3 py-2"
+            className="w-full rounded-lg border border-alelo-200 px-3 py-2 outline-none focus:border-alelo-500"
           />
         </div>
       </div>
       <button
         type="submit"
         disabled={salvando}
-        className="w-full rounded-lg bg-neutral-900 py-2.5 text-sm font-medium text-white disabled:opacity-40"
+        className="w-full rounded-lg bg-alelo-500 py-2.5 text-sm font-medium text-white transition-colors hover:bg-alelo-600 disabled:opacity-40"
       >
         {salvando ? "Salvando..." : "Salvar"}
       </button>

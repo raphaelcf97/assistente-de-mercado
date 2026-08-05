@@ -36,7 +36,7 @@ export default async function ComprasPage() {
 
   return (
     <div className="mx-auto max-w-md p-4 pb-24">
-      <h1 className="mb-4 text-lg font-semibold">Histórico de compras</h1>
+      <h1 className="mb-4 text-lg font-semibold text-alelo-900">Histórico de compras</h1>
 
       {error && <p className="text-sm text-red-600">Falha ao carregar: {error.message}</p>}
 
@@ -46,7 +46,7 @@ export default async function ComprasPage() {
 
       <div className="space-y-3">
         {compras.map((compra) => (
-          <div key={compra.id} className="rounded-lg border border-neutral-200 bg-white p-4">
+          <div key={compra.id} className="rounded-lg border border-alelo-100 bg-white p-4">
             <div className="mb-2 flex items-start justify-between">
               <div>
                 <p className="font-medium">{compra.mercados?.nome ?? "Mercado"}</p>
@@ -62,7 +62,7 @@ export default async function ComprasPage() {
             <ul className="space-y-1 text-sm text-neutral-700">
               {compra.itens_compra.map((item) => (
                 <li key={item.id} className="flex justify-between gap-2">
-                  <Link href={`/produtos/${item.produto_id}`} className="truncate underline decoration-neutral-300">
+                  <Link href={`/produtos/${item.produto_id}`} className="truncate text-alelo-700 underline decoration-alelo-200">
                     {item.produtos?.nome_canonico ?? item.nome_lido_na_nota}
                   </Link>
                   <span className="shrink-0 text-neutral-500">{formatarMoeda(item.preco_total)}</span>

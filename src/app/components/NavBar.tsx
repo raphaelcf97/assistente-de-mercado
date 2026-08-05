@@ -15,15 +15,15 @@ export default function NavBar() {
   if (pathname === "/login") return null;
 
   return (
-    <nav className="sticky bottom-0 z-10 mt-auto flex border-t border-neutral-200 bg-white">
+    <nav className="sticky bottom-0 z-10 mt-auto flex border-t border-alelo-100 bg-white">
       {ITENS.map((item) => {
         const ativo = pathname === item.href;
         return (
           <Link
             key={item.href}
             href={item.href}
-            className={`flex-1 py-3 text-center text-xs font-medium ${
-              ativo ? "text-neutral-900" : "text-neutral-400"
+            className={`flex-1 border-t-2 py-3 text-center text-xs font-medium ${
+              ativo ? "border-alelo-500 text-alelo-600" : "border-transparent text-neutral-400"
             }`}
           >
             {item.label}

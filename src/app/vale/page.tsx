@@ -22,10 +22,10 @@ export default async function ValePage() {
 
   return (
     <div className="mx-auto max-w-md p-4 pb-24">
-      <h1 className="mb-4 text-lg font-semibold">Vale alimentação</h1>
+      <h1 className="mb-4 text-lg font-semibold text-alelo-900">Vale alimentação</h1>
 
-      <div className="mb-4 rounded-lg border border-neutral-200 bg-white p-5 text-center">
-        <p className="text-xs text-neutral-500">Saldo atual</p>
+      <div className="mb-4 rounded-2xl bg-gradient-to-br from-alelo-500 to-alelo-700 p-5 text-center text-white shadow-sm">
+        <p className="text-xs text-alelo-100">Saldo atual</p>
         <p className="text-3xl font-semibold">{formatarMoeda(saldo)}</p>
       </div>
 
@@ -36,17 +36,17 @@ export default async function ValePage() {
         />
       </div>
 
-      <h2 className="mb-2 text-sm font-medium text-neutral-700">Extrato</h2>
+      <h2 className="mb-2 text-sm font-medium text-alelo-800">Extrato</h2>
       <div className="space-y-2">
         {(transacoes ?? []).map((t) => (
-          <div key={t.id} className="flex items-center justify-between rounded-lg border border-neutral-200 bg-white p-3 text-sm">
+          <div key={t.id} className="flex items-center justify-between rounded-lg border border-alelo-100 bg-white p-3 text-sm">
             <div>
               <p className="font-medium capitalize">{t.tipo}</p>
               <p className="text-xs text-neutral-500">
                 {formatarData(t.data)} {t.descricao ? `· ${t.descricao}` : ""}
               </p>
             </div>
-            <p className={`font-medium ${t.valor >= 0 ? "text-green-700" : "text-neutral-900"}`}>
+            <p className={`font-medium ${t.valor >= 0 ? "text-[#00b887]" : "text-alelo-900"}`}>
               {t.valor >= 0 ? "+" : ""}
               {formatarMoeda(t.valor)}
             </p>

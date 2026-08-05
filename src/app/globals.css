@@ -2,7 +2,22 @@
 
 :root {
   --background: #ffffff;
-  --foreground: #171717;
+  --foreground: #2e184e;
+}
+
+@theme {
+  /* Paleta da marca Alelo (roxo), extraída do site oficial */
+  --color-alelo-50: #e8e0f5;
+  --color-alelo-100: #d2b9f8;
+  --color-alelo-200: #c5a4f8;
+  --color-alelo-300: #9a73d3;
+  --color-alelo-400: #723dc1;
+  --color-alelo-500: #6536ab;
+  --color-alelo-600: #522c8c;
+  --color-alelo-700: #40226d;
+  --color-alelo-800: #371d5d;
+  --color-alelo-900: #2e184e;
+  --color-alelo-green: #00b887;
 }
 
 @theme inline {

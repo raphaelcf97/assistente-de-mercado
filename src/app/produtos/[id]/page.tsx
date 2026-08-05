@@ -37,23 +37,23 @@ export default async function ProdutoPage({ params }: { params: Promise<{ id: st
 
   return (
     <div className="mx-auto max-w-md p-4 pb-24">
-      <Link href="/compras" className="mb-2 inline-block text-sm text-neutral-500">
+      <Link href="/compras" className="mb-2 inline-block text-sm text-alelo-600">
         ← Voltar
       </Link>
-      <h1 className="mb-4 text-lg font-semibold">{produto.nome_canonico}</h1>
+      <h1 className="mb-4 text-lg font-semibold text-alelo-900">{produto.nome_canonico}</h1>
 
       {mediaGeral != null && (
-        <div className="mb-4 rounded-lg border border-neutral-200 bg-white p-4">
+        <div className="mb-4 rounded-lg border border-alelo-100 bg-white p-4">
           <p className="text-xs text-neutral-500">Média geral (todos os mercados)</p>
-          <p className="text-xl font-semibold">{formatarMoeda(mediaGeral)}</p>
+          <p className="text-xl font-semibold text-alelo-800">{formatarMoeda(mediaGeral)}</p>
         </div>
       )}
 
-      <h2 className="mb-2 text-sm font-medium text-neutral-700">Preço médio por mercado</h2>
+      <h2 className="mb-2 text-sm font-medium text-alelo-800">Preço médio por mercado</h2>
       {linhas.length === 0 && <p className="text-sm text-neutral-500">Nenhuma compra registrada ainda.</p>}
       <div className="space-y-2">
         {linhas.map((linha) => (
-          <div key={linha.mercado_id} className="flex items-center justify-between rounded-lg border border-neutral-200 bg-white p-3">
+          <div key={linha.mercado_id} className="flex items-center justify-between rounded-lg border border-alelo-100 bg-white p-3">
             <div>
               <p className="font-medium">{linha.mercado_nome}</p>
               <p className="text-xs text-neutral-500">

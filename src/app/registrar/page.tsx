@@ -134,20 +134,20 @@ export default function RegistrarPage() {
   if (etapa === "concluido") {
     return (
       <div className="mx-auto max-w-md p-6 text-center">
-        <h1 className="mb-2 text-lg font-semibold">Compra registrada!</h1>
+        <h1 className="mb-2 text-lg font-semibold text-alelo-900">Compra registrada!</h1>
         <p className="mb-6 text-sm text-neutral-500">
           {pagoVale ? "O valor já foi debitado do seu vale alimentação." : "Compra salva com sucesso."}
         </p>
         <div className="flex flex-col gap-2">
           <button
             onClick={() => router.push("/compras")}
-            className="rounded-lg bg-neutral-900 py-3 font-medium text-white"
+            className="rounded-lg bg-alelo-500 py-3 font-medium text-white hover:bg-alelo-600"
           >
             Ver histórico de compras
           </button>
           <button
             onClick={() => window.location.reload()}
-            className="rounded-lg border border-neutral-300 py-3 font-medium"
+            className="rounded-lg border border-alelo-200 py-3 font-medium text-alelo-700"
           >
             Registrar outra compra
           </button>
@@ -158,7 +158,7 @@ export default function RegistrarPage() {
 
   return (
     <div className="mx-auto max-w-md p-4 pb-24">
-      <h1 className="mb-4 text-lg font-semibold">Registrar compra</h1>
+      <h1 className="mb-4 text-lg font-semibold text-alelo-900">Registrar compra</h1>
 
       {erro && (
         <p className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{erro}</p>
@@ -183,7 +183,7 @@ export default function RegistrarPage() {
           <button
             onClick={extrair}
             disabled={!foto || etapa === "extraindo"}
-            className="w-full rounded-lg bg-neutral-900 py-3 font-medium text-white disabled:opacity-40"
+            className="w-full rounded-lg bg-alelo-500 py-3 font-medium text-white transition-colors hover:bg-alelo-600 disabled:opacity-40"
           >
             {etapa === "extraindo" ? "Lendo nota..." : "Extrair dados"}
           </button>
@@ -237,7 +237,7 @@ export default function RegistrarPage() {
               type="checkbox"
               checked={pagoVale}
               onChange={(e) => setPagoVale(e.target.checked)}
-              className="h-4 w-4"
+              className="h-4 w-4 accent-alelo-500"
             />
             Pago com vale alimentação
           </label>
@@ -281,22 +281,22 @@ export default function RegistrarPage() {
                   </div>
 
                   {item.status === "match_parecido" && (
-                    <div className="mt-2 rounded bg-blue-50 p-2 text-xs">
-                      <p className="mb-1 text-blue-900">
+                    <div className="mt-2 rounded bg-alelo-50 p-2 text-xs">
+                      <p className="mb-1 text-alelo-900">
                         Parece com <strong>{item.sugestao_produto_nome}</strong>, já no seu histórico. É o mesmo produto?
                       </p>
                       <div className="flex gap-2">
                         <button
                           type="button"
                           onClick={() => atualizarItem(idx, "decisao", "confirmar")}
-                          className={`rounded px-2 py-1 ${item.decisao === "confirmar" ? "bg-blue-600 text-white" : "bg-white border border-blue-300"}`}
+                          className={`rounded px-2 py-1 ${item.decisao === "confirmar" ? "bg-alelo-500 text-white" : "border border-alelo-300 bg-white"}`}
                         >
                           Mesmo produto
                         </button>
                         <button
                           type="button"
                           onClick={() => atualizarItem(idx, "decisao", "novo")}
-                          className={`rounded px-2 py-1 ${item.decisao === "novo" ? "bg-blue-600 text-white" : "bg-white border border-blue-300"}`}
+                          className={`rounded px-2 py-1 ${item.decisao === "novo" ? "bg-alelo-500 text-white" : "border border-alelo-300 bg-white"}`}
                         >
                           Produto diferente
                         </button>
@@ -314,7 +314,7 @@ export default function RegistrarPage() {
           <button
             onClick={salvar}
             disabled={!podeSalvar || etapa === "salvando"}
-            className="w-full rounded-lg bg-neutral-900 py-3 font-medium text-white disabled:opacity-40"
+            className="w-full rounded-lg bg-alelo-500 py-3 font-medium text-white transition-colors hover:bg-alelo-600 disabled:opacity-40"
           >
             {etapa === "salvando" ? "Salvando..." : "Salvar compra"}
           </button>

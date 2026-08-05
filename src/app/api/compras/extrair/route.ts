@@ -22,6 +22,7 @@ export async function POST(request: Request) {
     const texto = await extrairTextoDaImagem(bytes);
     bruta = interpretarTextoNota(texto);
   } catch (err) {
+    console.error("Falha ao extrair nota fiscal:", err);
     const msg = err instanceof Error ? err.message : "Falha ao ler a nota fiscal.";
     return NextResponse.json({ erro: msg }, { status: 502 });
   }

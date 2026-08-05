@@ -6,6 +6,7 @@ import { classificarProduto, normalizarNome } from "@/lib/matching";
 import type { CampoIncerto, CompraExtraida, ItemExtraido, Mercado, Produto, ProdutoAlias } from "@/lib/types";
 
 export const runtime = "nodejs";
+export const maxDuration = 60;
 
 export async function POST(request: Request) {
   const formData = await request.formData().catch(() => null);

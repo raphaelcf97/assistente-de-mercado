@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { comprimirImagem } from "@/lib/comprimir-imagem";
 import type { CompraExtraida, CompraConfirmada, ItemExtraido } from "@/lib/types";
 
 type ItemEmEdicao = ItemExtraido & {
@@ -17,6 +18,7 @@ export default function RegistrarPage() {
   const [erro, setErro] = useState<string | null>(null);
   const [foto, setFoto] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [comprimindo, setComprimindo] = useState(false);
 
   const [mercadoNome, setMercadoNome] = useState("");
   const [mercadoId, setMercadoId] = useState<string | null>(null);
@@ -27,11 +29,22 @@ export default function RegistrarPage() {
   const [itens, setItens] = useState<ItemEmEdicao[]>([]);
   const [camposIncertos, setCamposIncertos] = useState<Set<string>>(new Set());
 
-  function selecionarFoto(e: React.ChangeEvent<HTMLInputElement>) {
+  async function selecionarFoto(e: React.ChangeEvent<HTMLInputElement>) {
     const arquivo = e.target.files?.[0];
     if (!arquivo) return;
-    setFoto(arquivo);
-    setPreviewUrl(URL.createObjectURL(arquivo));
+    setErro(null);
+    setComprimindo(true);
+    try {
+      const comprimido = await comprimirImagem(arquivo);
+      setFoto(comprimido);
+      setPreviewUrl(URL.createObjectURL(comprimido));
+    } catch {
+      // se a compressão falhar por algum motivo, segue com o arquivo original
+      setFoto(arquivo);
+      setPreviewUrl(URL.createObjectURL(arquivo));
+    } finally {
+      setComprimindo(false);
+    }
   }
 
   async function extrair() {
@@ -176,13 +189,14 @@ export default function RegistrarPage() {
               className="block w-full text-sm"
             />
           </label>
+          {comprimindo && <p className="text-sm text-neutral-500">Preparando foto...</p>}
           {previewUrl && (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={previewUrl} alt="Prévia da nota" className="w-full rounded-lg border border-neutral-200" />
           )}
           <button
             onClick={extrair}
-            disabled={!foto || etapa === "extraindo"}
+            disabled={!foto || comprimindo || etapa === "extraindo"}
             className="w-full rounded-lg bg-alelo-500 py-3 font-medium text-white transition-colors hover:bg-alelo-600 disabled:opacity-40"
           >
             {etapa === "extraindo" ? "Lendo nota..." : "Extrair dados"}

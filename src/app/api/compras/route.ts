@@ -5,6 +5,7 @@ import { normalizarNome } from "@/lib/matching";
 import type { CompraConfirmada } from "@/lib/types";
 
 export const runtime = "nodejs";
+export const maxDuration = 30;
 
 export async function POST(request: Request) {
   const formData = await request.formData().catch(() => null);

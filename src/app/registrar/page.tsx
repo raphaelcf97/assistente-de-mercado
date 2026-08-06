@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { comprimirImagem } from "@/lib/comprimir-imagem";
+import { extrairTextoDaImagemNoNavegador } from "@/lib/ocr-cliente";
 import type { CompraExtraida, CompraConfirmada, ItemExtraido } from "@/lib/types";
 
 type ItemEmEdicao = ItemExtraido & {
@@ -19,6 +20,7 @@ export default function RegistrarPage() {
   const [foto, setFoto] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [comprimindo, setComprimindo] = useState(false);
+  const [progressoOcr, setProgressoOcr] = useState(0);
 
   const [mercadoNome, setMercadoNome] = useState("");
   const [mercadoId, setMercadoId] = useState<string | null>(null);
@@ -50,11 +52,15 @@ export default function RegistrarPage() {
   async function extrair() {
     if (!foto) return;
     setErro(null);
+    setProgressoOcr(0);
     setEtapa("extraindo");
     try {
-      const fd = new FormData();
-      fd.append("foto", foto);
-      const res = await fetch("/api/compras/extrair", { method: "POST", body: fd });
+      const texto = await extrairTextoDaImagemNoNavegador(foto, setProgressoOcr);
+      const res = await fetch("/api/compras/extrair", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ texto }),
+      });
       const data = await res.json();
       if (!res.ok || !data.ok) {
         setErro(data.erro ?? "Não foi possível ler a nota.");
@@ -199,8 +205,15 @@ export default function RegistrarPage() {
             disabled={!foto || comprimindo || etapa === "extraindo"}
             className="w-full rounded-lg bg-alelo-500 py-3 font-medium text-white transition-colors hover:bg-alelo-600 disabled:opacity-40"
           >
-            {etapa === "extraindo" ? "Lendo nota..." : "Extrair dados"}
+            {etapa === "extraindo"
+              ? `Lendo nota... ${Math.round(progressoOcr * 100)}%`
+              : "Extrair dados"}
           </button>
+          {etapa === "extraindo" && (
+            <p className="text-center text-xs text-neutral-400">
+              A leitura roda no seu aparelho e pode levar um tempinho.
+            </p>
+          )}
         </div>
       )}
 

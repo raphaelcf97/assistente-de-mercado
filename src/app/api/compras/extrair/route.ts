@@ -1,31 +1,19 @@
 import { NextResponse } from "next/server";
-import { extrairTextoDaImagem } from "@/lib/ocr";
 import { interpretarTextoNota } from "@/lib/parse-nota";
 import { supabaseAdmin } from "@/lib/supabase";
 import { classificarProduto, normalizarNome } from "@/lib/matching";
 import type { CampoIncerto, CompraExtraida, ItemExtraido, Mercado, Produto, ProdutoAlias } from "@/lib/types";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
 
 export async function POST(request: Request) {
-  const formData = await request.formData().catch(() => null);
-  const foto = formData?.get("foto");
-  if (!foto || !(foto instanceof File)) {
-    return NextResponse.json({ erro: "Nenhuma foto enviada." }, { status: 400 });
+  const body = await request.json().catch(() => null);
+  const texto = body?.texto;
+  if (typeof texto !== "string" || !texto.trim()) {
+    return NextResponse.json({ erro: "Nenhum texto de nota recebido." }, { status: 400 });
   }
 
-  const bytes = Buffer.from(await foto.arrayBuffer());
-
-  let bruta;
-  try {
-    const texto = await extrairTextoDaImagem(bytes);
-    bruta = interpretarTextoNota(texto);
-  } catch (err) {
-    console.error("Falha ao extrair nota fiscal:", err);
-    const msg = err instanceof Error ? err.message : "Falha ao ler a nota fiscal.";
-    return NextResponse.json({ erro: msg }, { status: 502 });
-  }
+  const bruta = interpretarTextoNota(texto);
 
   const supabase = supabaseAdmin();
   const [{ data: mercados }, { data: produtos }, { data: aliases }] = await Promise.all([

@@ -8,9 +8,27 @@ export type Database = {
         Relationships: [];
       };
       produtos: {
-        Row: { id: string; nome_canonico: string; unidade_padrao: string | null; created_at: string };
-        Insert: { id?: string; nome_canonico: string; unidade_padrao?: string | null; created_at?: string };
-        Update: { id?: string; nome_canonico?: string; unidade_padrao?: string | null; created_at?: string };
+        Row: {
+          id: string;
+          nome_canonico: string;
+          unidade_padrao: string | null;
+          categoria: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          nome_canonico: string;
+          unidade_padrao?: string | null;
+          categoria?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          nome_canonico?: string;
+          unidade_padrao?: string | null;
+          categoria?: string | null;
+          created_at?: string;
+        };
         Relationships: [];
       };
       produto_aliases: {

@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 const ITENS = [
   { href: "/", label: "Início" },
   { href: "/registrar", label: "Registrar" },
+  { href: "/produtos", label: "Produtos" },
   { href: "/compras", label: "Compras" },
   { href: "/vale", label: "Vale" },
 ];
@@ -17,7 +18,8 @@ export default function NavBar() {
   return (
     <nav className="sticky bottom-0 z-10 mt-auto flex border-t border-alelo-100 bg-white">
       {ITENS.map((item) => {
-        const ativo = pathname === item.href;
+        const ativo =
+          item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
         return (
           <Link
             key={item.href}

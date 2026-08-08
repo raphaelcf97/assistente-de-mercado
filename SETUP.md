@@ -7,6 +7,7 @@ Guia passo a passo para colocar o app no ar. Você vai precisar criar 3 contas g
 1. Crie uma conta em [supabase.com](https://supabase.com) e clique em **New Project**.
 2. Escolha um nome (ex: `assistente-mercado`), uma senha de banco (guarde, mas não vai precisar dela no dia a dia) e a região mais próxima (ex: São Paulo).
 3. Depois que o projeto for criado, vá em **SQL Editor** → **New query**, cole todo o conteúdo do arquivo [`supabase/schema.sql`](supabase/schema.sql) deste repositório e clique em **Run**. Isso cria todas as tabelas.
+   - **Migrations posteriores**: a pasta [`supabase/migrations/`](supabase/migrations/) tem alterações feitas depois da criação do banco. Rode cada uma, em ordem, da mesma forma (SQL Editor → cola → Run). Hoje há uma pendente: `002_categoria_produtos.sql` (adiciona a categoria dos produtos, usada na aba "Produtos").
 4. Vá em **Storage** → **New bucket** → nome `notas` → marque como **Private** (não público) → criar.
 5. Vá em **Project Settings** → **API**. Anote:
    - **Project URL** → vai virar `SUPABASE_URL`

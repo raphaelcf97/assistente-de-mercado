@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { comprimirImagem } from "@/lib/comprimir-imagem";
 import { extrairTextoDaImagemNoNavegador } from "@/lib/ocr-cliente";
+import { UNIDADES } from "@/lib/parse-nota";
 import type { CompraExtraida, CompraConfirmada, ItemExtraido } from "@/lib/types";
 
 type ItemEmEdicao = ItemExtraido & {
@@ -291,12 +292,18 @@ export default function RegistrarPage() {
                       placeholder="Qtd"
                       className="rounded border border-neutral-300 px-2 py-1"
                     />
-                    <input
+                    <select
                       value={item.unidade ?? ""}
-                      onChange={(e) => atualizarItem(idx, "unidade", e.target.value)}
-                      placeholder="Un."
+                      onChange={(e) => atualizarItem(idx, "unidade", e.target.value || null)}
                       className="rounded border border-neutral-300 px-2 py-1"
-                    />
+                    >
+                      <option value="">—</option>
+                      {UNIDADES.map((u) => (
+                        <option key={u} value={u}>
+                          {u}
+                        </option>
+                      ))}
+                    </select>
                     <input
                       type="number"
                       step="0.01"

@@ -1,6 +1,6 @@
 # Setup — Assistente de Mercado
 
-Guia passo a passo para colocar o app no ar. Você vai precisar criar 3 contas gratuitas (Supabase, GitHub, Vercel) — nenhuma delas eu consigo criar por você. A leitura da nota fiscal roda por OCR local (Tesseract), sem nenhuma API paga — não precisa de conta na Anthropic nem cartão de crédito em lugar nenhum.
+Guia passo a passo para colocar o app no ar. Você vai precisar criar 3 contas gratuitas (Supabase, GitHub, Vercel) — nenhuma delas eu consigo criar por você. Não há nenhuma API paga envolvida: não precisa de conta na Anthropic nem cartão de crédito em lugar nenhum.
 
 ## 1. Banco de dados (Supabase)
 
@@ -53,7 +53,14 @@ git push -u origin main
 - Ao abrir o app pela primeira vez em cada aparelho, ele vai pedir o PIN definido em `APP_PIN`.
 - Configure o valor e o dia da recarga mensal do vale em **Vale → Recarga mensal automática**.
 - Toda compra registrada é assumida como paga no vale — desmarque a opção na tela de registro quando não for o caso.
-- **Sobre a leitura da nota**: é OCR genérico local (Tesseract), não uma IA — funciona bem em notas nítidas, mas erra mais em fotos tortas/borradas ou em formatos de cupom fora do padrão. Revise sempre a tela de confirmação antes de salvar; os campos que o OCR não conseguiu ler ficam destacados. Se a taxa de erro incomodar muito no uso real, dá pra revisitar essa parte depois (ex: melhorar as heurísticas de leitura conforme os formatos de nota que você mais usa).
+- **Lançamento é manual**, em **Registrar**: mercado, data e uma linha por produto (descrição, quantidade, medida e quanto pagou). O preço por kg/L/unidade é calculado sozinho — não digite.
+  - A descrição tem autocompletar dos produtos que você já comprou. Escolher da lista é o que liga a compra ao histórico; digitar um nome novo cria um produto novo.
+  - Assim que a linha estiver completa, aparece quanto você pagou por medida e, se já houver histórico, se está mais caro ou mais barato que a sua média.
+  - Se o nome tiver a medida embutida ("REQUEIJÃO 300ML"), a quantidade e a unidade já vêm preenchidas.
+  - **Total pago** só precisa ser preenchido se a nota teve desconto; sem isso ele usa a soma dos itens. É esse valor que é debitado do vale.
+  - A foto da nota é anexo opcional, guardada só para consulta.
+
+> Houve uma tentativa de ler a nota automaticamente por OCR (Tesseract). Foi medida contra uma nota real de 35 itens e chegou a no máximo 14 preços corretos — com erros silenciosos, do tipo `22,76` virar `22,15`. Como preço errado contamina o histórico, que é o propósito do app, o OCR foi removido. Se um dia valer a pena automatizar, o caminho é a chave de acesso do QR code da NFC-e, não a foto.
 
 ---
 

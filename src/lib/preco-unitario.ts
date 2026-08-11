@@ -30,6 +30,20 @@ function paraBase(
   }
 }
 
+// Preço por unidade de medida de UM item — a conta que aparece ao vivo
+// enquanto se digita a compra. 12 garrafas de 510ml por R$25,08 vira
+// R$4,10/L, que é o número comparável entre embalagens.
+export function precoPorUnidadeDoItem(
+  quantidade: number,
+  unidade: string | null,
+  precoTotal: number
+): { valor: number; unidade: UnidadeBase } | null {
+  if (!unidade || !quantidade || quantidade <= 0 || !precoTotal) return null;
+  const base = paraBase(quantidade, unidade);
+  if (!base || base.quantidade <= 0) return null;
+  return { valor: precoTotal / base.quantidade, unidade: base.unidade };
+}
+
 export function precoMedioPorUnidade(
   itens: ItemMedido[]
 ): { valor: number; unidade: UnidadeBase } | null {

@@ -9,11 +9,15 @@ export const maxDuration = 30;
 
 export async function POST(request: Request) {
   const formData = await request.formData().catch(() => null);
-  const foto = formData?.get("foto");
   const payloadRaw = formData?.get("payload");
-  if (!foto || !(foto instanceof File) || typeof payloadRaw !== "string") {
+  if (typeof payloadRaw !== "string") {
     return NextResponse.json({ erro: "Requisição incompleta." }, { status: 400 });
   }
+
+  // A foto virou anexo opcional: o lançamento é manual, e guardar a imagem
+  // da nota é conveniência, não requisito.
+  const fotoBruta = formData?.get("foto");
+  const foto = fotoBruta instanceof File && fotoBruta.size > 0 ? fotoBruta : null;
 
   const compra = JSON.parse(payloadRaw) as CompraConfirmada;
   const supabase = supabaseAdmin();
@@ -32,14 +36,15 @@ export async function POST(request: Request) {
     mercadoId = data.id;
   }
 
-  // 2. foto
-  const mediaType = foto.type === "image/png" ? "image/png" : "image/jpeg";
-  const bytes = Buffer.from(await foto.arrayBuffer());
+  // 2. foto (opcional)
   let fotoPath: string | null = null;
-  try {
-    fotoPath = await uploadFotoNota(bytes, mediaType);
-  } catch {
-    fotoPath = null; // não bloqueia o salvamento da compra por falha no upload da foto
+  if (foto) {
+    const mediaType = foto.type === "image/png" ? "image/png" : "image/jpeg";
+    try {
+      fotoPath = await uploadFotoNota(Buffer.from(await foto.arrayBuffer()), mediaType);
+    } catch {
+      fotoPath = null; // não bloqueia o salvamento da compra por falha no upload
+    }
   }
 
   // 3. produtos: resolve produto_id de cada item (vincula existente ou cria novo)

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { comprimirImagem } from "@/lib/comprimir-imagem";
+import { formatarMoeda } from "@/lib/format";
 import { extrairTextoDaImagemNoNavegador } from "@/lib/ocr-cliente";
 import { UNIDADES } from "@/lib/parse-nota";
 import type { CompraExtraida, CompraConfirmada, ItemExtraido } from "@/lib/types";
@@ -18,7 +19,11 @@ export default function RegistrarPage() {
   const router = useRouter();
   const [etapa, setEtapa] = useState<Etapa>("upload");
   const [erro, setErro] = useState<string | null>(null);
+  // `foto` é a versão comprimida, que vai pro Storage. `fotoOriginal` é o
+  // arquivo como saiu da câmera — o OCR precisa dele, porque a compressão
+  // que economiza banda destrói justamente o detalhe fino do texto térmico.
   const [foto, setFoto] = useState<File | null>(null);
+  const [fotoOriginal, setFotoOriginal] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [comprimindo, setComprimindo] = useState(false);
   const [progressoOcr, setProgressoOcr] = useState(0);
@@ -37,6 +42,7 @@ export default function RegistrarPage() {
     if (!arquivo) return;
     setErro(null);
     setComprimindo(true);
+    setFotoOriginal(arquivo);
     try {
       const comprimido = await comprimirImagem(arquivo);
       setFoto(comprimido);
@@ -56,7 +62,7 @@ export default function RegistrarPage() {
     setProgressoOcr(0);
     setEtapa("extraindo");
     try {
-      const texto = await extrairTextoDaImagemNoNavegador(foto, setProgressoOcr);
+      const texto = await extrairTextoDaImagemNoNavegador(fotoOriginal ?? foto, setProgressoOcr);
       const res = await fetch("/api/compras/extrair", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -92,6 +98,11 @@ export default function RegistrarPage() {
   function atualizarItem(idx: number, campo: keyof ItemEmEdicao, valor: unknown) {
     setItens((prev) => prev.map((it, i) => (i === idx ? { ...it, [campo]: valor } : it)));
   }
+
+  // Conferência rápida contra a nota: a soma dos itens tem que bater com o
+  // "Valor total" impresso (antes do desconto). É o jeito mais rápido de
+  // perceber que o OCR pulou uma linha, sem ter que reler item por item.
+  const somaItens = itens.reduce((acc, it) => acc + (Number(it.preco_total) || 0), 0);
 
   const pendencias = itens.some((it) => it.status === "match_parecido" && !it.decisao);
   const podeSalvar = Boolean(!pendencias && mercadoNome.trim() && dataCompra && valorTotal);
@@ -271,7 +282,16 @@ export default function RegistrarPage() {
           </label>
 
           <div>
-            <h2 className="mb-2 text-sm font-medium text-neutral-700">Itens ({itens.length})</h2>
+            <div className="mb-1 flex items-baseline justify-between">
+              <h2 className="text-sm font-medium text-neutral-700">Itens ({itens.length})</h2>
+              <span className="text-sm font-medium text-alelo-800">
+                soma {formatarMoeda(somaItens)}
+              </span>
+            </div>
+            <p className="mb-3 text-xs text-neutral-400">
+              A soma tem que bater com o “Valor total” impresso na nota (antes do desconto). Se
+              estiver diferente, o OCR pulou ou dobrou alguma linha.
+            </p>
             <div className="space-y-3">
               {itens.map((item, idx) => (
                 <div

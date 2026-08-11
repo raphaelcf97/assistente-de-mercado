@@ -40,6 +40,10 @@ yarn-error.log*
 # cache de idioma do tesseract.js (baixado automaticamente em runtime)
 *.traineddata
 
+# notas fiscais reais usadas pra calibrar o OCR — documento pessoal,
+# nunca versionar
+/teste
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

@@ -3,6 +3,7 @@ import { formatarMoeda, formatarData } from "@/lib/format";
 import { CARTEIRAS_VALE, ROTULO_CARTEIRA, type CarteiraVale } from "@/lib/carteiras";
 import ConfigVale from "./ConfigVale";
 import ExtratoVale from "./ExtratoVale";
+import LancarMovimentacao from "./LancarMovimentacao";
 
 export const dynamic = "force-dynamic";
 
@@ -42,6 +43,10 @@ export default async function ValePage() {
             <p className="text-2xl font-semibold">{formatarMoeda(saldo(c))}</p>
           </div>
         ))}
+      </div>
+
+      <div className="mb-5">
+        <LancarMovimentacao carteiraInicial="refeicao" />
       </div>
 
       <div className="mb-5 space-y-3">

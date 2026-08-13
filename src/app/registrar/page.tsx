@@ -11,13 +11,19 @@ export const dynamic = "force-dynamic";
 export default async function RegistrarPage() {
   const supabase = supabaseAdmin();
 
-  const [{ data: mercados }, { data: produtos }, { data: compras }, { data: itens }] =
+  const [{ data: mercados }, { data: produtos }, { data: compras }, { data: itens }, { data: saldoRows }] =
     await Promise.all([
       supabase.from("mercados").select("id, nome").order("nome"),
       supabase.from("produtos").select("id, nome_canonico").order("nome_canonico"),
       supabase.from("compras").select("id, data_compra, mercado_id"),
       supabase.from("itens_compra").select("produto_id, quantidade, unidade, preco_total, compra_id"),
+      supabase.from("vale_saldo").select("carteira, saldo"),
     ]);
+
+  // saldo aparece dentro do seletor de carteira, pra escolher sabendo quanto
+  // ainda tem em cada uma
+  const saldos: Record<string, number> = {};
+  for (const linha of saldoRows ?? []) saldos[linha.carteira] = linha.saldo;
 
   const nomeDoMercado = new Map((mercados ?? []).map((m) => [m.id, m.nome]));
   const dadosDaCompra = new Map(
@@ -65,6 +71,7 @@ export default async function RegistrarPage() {
     <FormularioCompra
       mercados={(mercados ?? []).map((m) => ({ id: m.id, nome: m.nome }))}
       produtos={conhecidos}
+      saldos={saldos}
     />
   );
 }

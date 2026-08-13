@@ -7,7 +7,9 @@ Guia passo a passo para colocar o app no ar. Você vai precisar criar 3 contas g
 1. Crie uma conta em [supabase.com](https://supabase.com) e clique em **New Project**.
 2. Escolha um nome (ex: `assistente-mercado`), uma senha de banco (guarde, mas não vai precisar dela no dia a dia) e a região mais próxima (ex: São Paulo).
 3. Depois que o projeto for criado, vá em **SQL Editor** → **New query**, cole todo o conteúdo do arquivo [`supabase/schema.sql`](supabase/schema.sql) deste repositório e clique em **Run**. Isso cria todas as tabelas.
-   - **Migrations posteriores**: a pasta [`supabase/migrations/`](supabase/migrations/) tem alterações feitas depois da criação do banco. Rode cada uma, em ordem, da mesma forma (SQL Editor → cola → Run). Hoje há uma pendente: `002_categoria_produtos.sql` (adiciona a categoria dos produtos, usada na aba "Produtos").
+   - **Migrations posteriores**: a pasta [`supabase/migrations/`](supabase/migrations/) tem alterações feitas depois da criação do banco. Rode cada uma, **em ordem**, da mesma forma (SQL Editor → cola → Run):
+     - `002_categoria_produtos.sql` — categoria dos produtos, usada na aba "Produtos"
+     - `003_vale_refeicao.sql` — segunda carteira (vale refeição) e lançamento de gasto fora de casa
 4. Vá em **Storage** → **New bucket** → nome `notas` → marque como **Private** (não público) → criar.
 5. Vá em **Project Settings** → **API**. Anote:
    - **Project URL** → vai virar `SUPABASE_URL`
@@ -51,9 +53,12 @@ git push -u origin main
 ## 5. Uso do dia a dia
 
 - Ao abrir o app pela primeira vez em cada aparelho, ele vai pedir o PIN definido em `APP_PIN`.
-- Configure o valor e o dia da recarga mensal do vale em **Vale → Recarga mensal automática**.
-- Toda compra registrada é assumida como paga no vale — desmarque a opção na tela de registro quando não for o caso.
-- **Lançamento é manual**, em **Registrar**: mercado, data e uma linha por produto (descrição, quantidade, medida e quanto pagou). O preço por kg/L/unidade é calculado sozinho — não digite.
+- Em **Vales** você configura, para **cada carteira** (alimentação e refeição), o valor e o dia da recarga mensal. As duas são independentes — podem cair em dias diferentes.
+- Todo lançamento escolhe de qual carteira saiu: **Alimentação**, **Refeição** ou **Outro** (dinheiro, Pix, cartão próprio — registra o gasto mas não debita vale nenhum).
+- Há dois tipos de lançamento em **Registrar**:
+  - **Compra de mercado** — com itens; é o que alimenta o histórico de preços.
+  - **Gasto fora** — restaurante, bar, lanche, delivery; só lugar, data e valor. Existe para o saldo do vale fechar com a realidade.
+- **Lançamento é manual**: mercado, data e uma linha por produto (descrição, quantidade, medida e quanto pagou). O preço por kg/L/unidade é calculado sozinho — não digite.
   - A descrição tem autocompletar dos produtos que você já comprou. Escolher da lista é o que liga a compra ao histórico; digitar um nome novo cria um produto novo.
   - Assim que a linha estiver completa, aparece quanto você pagou por medida e, se já houver histórico, se está mais caro ou mais barato que a sua média.
   - Se o nome tiver a medida embutida ("REQUEIJÃO 300ML"), a quantidade e a unidade já vêm preenchidas.

@@ -1,9 +1,10 @@
 import Link from "next/link";
 
 const ATALHOS = [
-  { href: "/registrar", titulo: "Registrar compra", descricao: "Tire uma foto da nota fiscal" },
-  { href: "/compras", titulo: "Histórico de compras", descricao: "Veja compras e preços por produto" },
-  { href: "/vale", titulo: "Vale alimentação", descricao: "Saldo, extrato e recarga mensal" },
+  { href: "/registrar", titulo: "Registrar", descricao: "Compra de mercado ou gasto fora" },
+  { href: "/produtos", titulo: "Meus produtos", descricao: "Quanto você paga normalmente em cada um" },
+  { href: "/compras", titulo: "Histórico", descricao: "Tudo que você já lançou" },
+  { href: "/vale", titulo: "Meus vales", descricao: "Saldo de alimentação e refeição" },
 ];
 
 export default function HomePage() {

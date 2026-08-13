@@ -1,3 +1,5 @@
+import type { Carteira, CarteiraVale, CategoriaCompra } from "@/lib/carteiras";
+
 export type Mercado = {
   id: string;
   nome: string;
@@ -25,7 +27,8 @@ export type Compra = {
   data_compra: string;
   valor_total: number;
   forma_pagamento_detectada: string | null;
-  pago_vale_alimentacao: boolean;
+  carteira: Carteira;
+  categoria: CategoriaCompra;
   foto_url: string | null;
   created_at: string;
 };
@@ -42,7 +45,8 @@ export type ItemCompra = {
 };
 
 export type ValeConfig = {
-  id: 1;
+  id: number;
+  carteira: CarteiraVale;
   valor_recarga: number;
   dia_do_mes: number;
   ativo: boolean;
@@ -53,6 +57,7 @@ export type ValeTransacaoTipo = "recarga" | "compra" | "ajuste";
 export type ValeTransacao = {
   id: string;
   tipo: ValeTransacaoTipo;
+  carteira: CarteiraVale;
   valor: number;
   data: string;
   compra_id: string | null;
@@ -115,6 +120,7 @@ export type CompraConfirmada = {
   data_compra: string;
   valor_total: number;
   forma_pagamento_detectada: string | null;
-  pago_vale_alimentacao: boolean;
+  carteira: Carteira;
+  categoria: CategoriaCompra;
   itens: ItemConfirmado[];
 };

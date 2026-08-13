@@ -51,7 +51,8 @@ export type Database = {
           data_compra: string;
           valor_total: number;
           forma_pagamento_detectada: string | null;
-          pago_vale_alimentacao: boolean;
+          carteira: string;
+          categoria: string;
           foto_url: string | null;
           created_at: string;
         };
@@ -61,7 +62,8 @@ export type Database = {
           data_compra: string;
           valor_total: number;
           forma_pagamento_detectada?: string | null;
-          pago_vale_alimentacao?: boolean;
+          carteira?: string;
+          categoria?: string;
           foto_url?: string | null;
           created_at?: string;
         };
@@ -71,7 +73,8 @@ export type Database = {
           data_compra?: string;
           valor_total?: number;
           forma_pagamento_detectada?: string | null;
-          pago_vale_alimentacao?: boolean;
+          carteira?: string;
+          categoria?: string;
           foto_url?: string | null;
           created_at?: string;
         };
@@ -131,15 +134,28 @@ export type Database = {
         ];
       };
       vale_config: {
-        Row: { id: 1; valor_recarga: number; dia_do_mes: number; ativo: boolean };
-        Insert: { id?: 1; valor_recarga?: number; dia_do_mes?: number; ativo?: boolean };
-        Update: { id?: 1; valor_recarga?: number; dia_do_mes?: number; ativo?: boolean };
+        Row: { id: number; carteira: string; valor_recarga: number; dia_do_mes: number; ativo: boolean };
+        Insert: {
+          id?: number;
+          carteira?: string;
+          valor_recarga?: number;
+          dia_do_mes?: number;
+          ativo?: boolean;
+        };
+        Update: {
+          id?: number;
+          carteira?: string;
+          valor_recarga?: number;
+          dia_do_mes?: number;
+          ativo?: boolean;
+        };
         Relationships: [];
       };
       vale_transacoes: {
         Row: {
           id: string;
           tipo: "recarga" | "compra" | "ajuste";
+          carteira: string;
           valor: number;
           data: string;
           compra_id: string | null;
@@ -149,6 +165,7 @@ export type Database = {
         Insert: {
           id?: string;
           tipo: "recarga" | "compra" | "ajuste";
+          carteira?: string;
           valor: number;
           data?: string;
           compra_id?: string | null;
@@ -158,6 +175,7 @@ export type Database = {
         Update: {
           id?: string;
           tipo?: "recarga" | "compra" | "ajuste";
+          carteira?: string;
           valor?: number;
           data?: string;
           compra_id?: string | null;
@@ -176,7 +194,7 @@ export type Database = {
     };
     Views: {
       vale_saldo: {
-        Row: { saldo: number };
+        Row: { carteira: string; saldo: number };
         Relationships: [];
       };
       historico_precos: {

@@ -7,6 +7,14 @@ import { formatarMoeda, formatarData } from "@/lib/format";
 import { normalizarNome } from "@/lib/matching";
 import { precoPorUnidadeDoItem, type UnidadeBase } from "@/lib/preco-unitario";
 import { UNIDADES, medidaNaDescricao, type UnidadeMedida } from "@/lib/unidades";
+import {
+  CARTEIRAS,
+  CATEGORIAS_SEM_ITENS,
+  ROTULO_CARTEIRA,
+  ROTULO_CATEGORIA,
+  type Carteira,
+  type CategoriaCompra,
+} from "@/lib/carteiras";
 import type { CompraConfirmada } from "@/lib/types";
 
 export type ProdutoConhecido = {
@@ -48,21 +56,32 @@ function hoje(): string {
 export default function FormularioCompra({
   mercados,
   produtos,
+  saldos,
 }: {
   mercados: { id: string; nome: string }[];
   produtos: ProdutoConhecido[];
+  saldos: Record<string, number>;
 }) {
   const router = useRouter();
 
-  const [mercadoNome, setMercadoNome] = useState("");
+  // "mercado" é o lançamento com produtos, que alimenta o histórico de
+  // preços. "fora" é gasto avulso (restaurante, bar, delivery): só valor,
+  // lugar e data — existe pra que o saldo do vale feche com a realidade.
+  const [modo, setModo] = useState<"mercado" | "fora">("mercado");
+  const [categoriaFora, setCategoriaFora] = useState<CategoriaCompra>("restaurante");
+  const [carteira, setCarteira] = useState<Carteira>("alimentacao");
+
+  const [local, setLocal] = useState("");
   const [dataCompra, setDataCompra] = useState(hoje);
-  const [pagoVale, setPagoVale] = useState(true);
   const [itens, setItens] = useState<ItemForm[]>([{ ...ITEM_VAZIO }]);
   const [totalPago, setTotalPago] = useState("");
+  const [valorAvulso, setValorAvulso] = useState("");
   const [foto, setFoto] = useState<File | null>(null);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [concluido, setConcluido] = useState(false);
+
+  const categoria: CategoriaCompra = modo === "mercado" ? "mercado" : categoriaFora;
 
   const porNome = useMemo(() => {
     const mapa = new Map<string, ProdutoConhecido>();
@@ -70,15 +89,26 @@ export default function FormularioCompra({
     return mapa;
   }, [produtos]);
 
-  const mercadoId = useMemo(() => {
-    const alvo = normalizarNome(mercadoNome);
+  const localId = useMemo(() => {
+    const alvo = normalizarNome(local);
     return mercados.find((m) => normalizarNome(m.nome) === alvo)?.id ?? null;
-  }, [mercadoNome, mercados]);
+  }, [local, mercados]);
 
   const somaItens = itens.reduce((acc, it) => acc + num(it.precoTotal), 0);
   const itensValidos = itens.filter((it) => it.descricao.trim() && num(it.precoTotal) > 0);
+
+  const valorFinal =
+    modo === "fora"
+      ? num(valorAvulso)
+      : num(totalPago) > 0
+        ? num(totalPago)
+        : somaItens;
+
   const podeSalvar =
-    Boolean(mercadoNome.trim()) && Boolean(dataCompra) && itensValidos.length > 0 && !salvando;
+    Boolean(local.trim()) &&
+    Boolean(dataCompra) &&
+    (modo === "mercado" ? itensValidos.length > 0 : valorFinal > 0) &&
+    !salvando;
 
   function atualizar(idx: number, mudanca: Partial<ItemForm>) {
     setItens((prev) =>
@@ -125,23 +155,26 @@ export default function FormularioCompra({
     setErro(null);
     setSalvando(true);
 
-    const total = num(totalPago) > 0 ? num(totalPago) : somaItens;
     const payload: CompraConfirmada = {
-      mercado_nome: mercadoNome.trim(),
-      mercado_id: mercadoId,
+      mercado_nome: local.trim(),
+      mercado_id: localId,
       data_compra: dataCompra,
-      valor_total: total,
-      forma_pagamento_detectada: pagoVale ? "Vale Alimentação" : null,
-      pago_vale_alimentacao: pagoVale,
-      itens: itensValidos.map((item) => ({
-        nome_lido_na_nota: item.descricao.trim(),
-        quantidade: num(item.quantidade) || 1,
-        unidade: item.unidade || null,
-        preco_unitario: null,
-        preco_total: num(item.precoTotal),
-        produto_id: item.produtoId,
-        novo_produto_nome: item.produtoId ? null : item.descricao.trim(),
-      })),
+      valor_total: valorFinal,
+      forma_pagamento_detectada: carteira === "outro" ? null : `Vale ${ROTULO_CARTEIRA[carteira]}`,
+      carteira,
+      categoria,
+      itens:
+        modo === "mercado"
+          ? itensValidos.map((item) => ({
+              nome_lido_na_nota: item.descricao.trim(),
+              quantidade: num(item.quantidade) || 1,
+              unidade: item.unidade || null,
+              preco_unitario: null,
+              preco_total: num(item.precoTotal),
+              produto_id: item.produtoId,
+              novo_produto_nome: item.produtoId ? null : item.descricao.trim(),
+            }))
+          : [],
     };
 
     try {
@@ -151,7 +184,7 @@ export default function FormularioCompra({
       const res = await fetch("/api/compras", { method: "POST", body: fd });
       const data = await res.json();
       if (!res.ok || !data.ok) {
-        setErro(data.erro ?? "Não foi possível salvar a compra.");
+        setErro(data.erro ?? "Não foi possível salvar.");
         setSalvando(false);
         return;
       }
@@ -165,24 +198,30 @@ export default function FormularioCompra({
   if (concluido) {
     return (
       <div className="mx-auto max-w-md p-6 text-center">
-        <h1 className="mb-2 text-lg font-semibold text-alelo-900">Compra registrada!</h1>
+        <h1 className="mb-2 text-lg font-semibold text-alelo-900">Lançamento salvo!</h1>
         <p className="mb-6 text-sm text-neutral-500">
-          {itensValidos.length} {itensValidos.length === 1 ? "item entrou" : "itens entraram"} no seu
-          histórico de preços.
-          {pagoVale && " O valor foi debitado do vale."}
+          {modo === "mercado" ? (
+            <>
+              {itensValidos.length} {itensValidos.length === 1 ? "item entrou" : "itens entraram"} no
+              seu histórico de preços.
+            </>
+          ) : (
+            <>{formatarMoeda(valorFinal)} registrado.</>
+          )}
+          {carteira !== "outro" && ` Debitado do vale ${ROTULO_CARTEIRA[carteira].toLowerCase()}.`}
         </p>
         <div className="flex flex-col gap-2">
           <button
-            onClick={() => router.push("/produtos")}
+            onClick={() => router.push(modo === "mercado" ? "/produtos" : "/vale")}
             className="rounded-lg bg-alelo-500 py-3 font-medium text-white hover:bg-alelo-600"
           >
-            Ver meus produtos
+            {modo === "mercado" ? "Ver meus produtos" : "Ver saldo"}
           </button>
           <button
             onClick={() => window.location.reload()}
             className="rounded-lg border border-alelo-200 py-3 font-medium text-alelo-700"
           >
-            Registrar outra compra
+            Registrar outro
           </button>
         </div>
       </div>
@@ -191,22 +230,71 @@ export default function FormularioCompra({
 
   return (
     <div className="mx-auto max-w-md p-4 pb-28">
-      <h1 className="mb-4 text-lg font-semibold text-alelo-900">Registrar compra</h1>
+      <h1 className="mb-4 text-lg font-semibold text-alelo-900">Registrar</h1>
 
       {erro && <p className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{erro}</p>}
 
-      {/* ── cabeçalho da compra ─────────────────────────────────────── */}
+      {/* ── o que é ─────────────────────────────────────────────────── */}
+      <div className="mb-4 grid grid-cols-2 gap-2">
+        {(
+          [
+            ["mercado", "Compra de mercado", "com produtos"],
+            ["fora", "Gasto fora", "só o valor"],
+          ] as const
+        ).map(([valor, titulo, sub]) => (
+          <button
+            key={valor}
+            type="button"
+            onClick={() => setModo(valor)}
+            className={`rounded-xl border px-3 py-3 text-left transition-colors ${
+              modo === valor
+                ? "border-alelo-500 bg-alelo-50"
+                : "border-alelo-100 bg-white hover:bg-alelo-50/40"
+            }`}
+          >
+            <span
+              className={`block text-sm font-medium ${
+                modo === valor ? "text-alelo-800" : "text-neutral-700"
+              }`}
+            >
+              {titulo}
+            </span>
+            <span className="text-xs text-neutral-500">{sub}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* ── cabeçalho ───────────────────────────────────────────────── */}
       <div className="mb-5 space-y-3 rounded-xl border border-alelo-100 bg-white p-4">
+        {modo === "fora" && (
+          <div>
+            <label className="mb-1 block text-xs font-medium text-neutral-600">Tipo</label>
+            <select
+              value={categoriaFora}
+              onChange={(e) => setCategoriaFora(e.target.value as CategoriaCompra)}
+              className="w-full rounded-lg border border-alelo-200 px-3 py-2 outline-none focus:border-alelo-500"
+            >
+              {CATEGORIAS_SEM_ITENS.map((c) => (
+                <option key={c} value={c}>
+                  {ROTULO_CATEGORIA[c]}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
         <div>
-          <label className="mb-1 block text-xs font-medium text-neutral-600">Mercado</label>
+          <label className="mb-1 block text-xs font-medium text-neutral-600">
+            {modo === "mercado" ? "Mercado" : "Estabelecimento"}
+          </label>
           <input
-            list="lista-mercados"
-            value={mercadoNome}
-            onChange={(e) => setMercadoNome(e.target.value)}
-            placeholder="Onde você comprou"
+            list="lista-locais"
+            value={local}
+            onChange={(e) => setLocal(e.target.value)}
+            placeholder={modo === "mercado" ? "Onde você comprou" : "Nome do lugar"}
             className="w-full rounded-lg border border-alelo-200 px-3 py-2 outline-none focus:border-alelo-500"
           />
-          <datalist id="lista-mercados">
+          <datalist id="lista-locais">
             {mercados.map((m) => (
               <option key={m.id} value={m.nome} />
             ))}
@@ -223,96 +311,148 @@ export default function FormularioCompra({
           />
         </div>
 
-        <label className="flex items-center gap-2 text-sm text-neutral-700">
-          <input
-            type="checkbox"
-            checked={pagoVale}
-            onChange={(e) => setPagoVale(e.target.checked)}
-            className="h-4 w-4 accent-alelo-500"
-          />
-          Pago com vale alimentação
-        </label>
-      </div>
-
-      {/* ── itens ───────────────────────────────────────────────────── */}
-      <div className="mb-2 flex items-baseline justify-between">
-        <h2 className="text-sm font-medium text-neutral-700">Itens</h2>
-        <span className="text-xs text-neutral-400">{itensValidos.length} lançados</span>
-      </div>
-
-      <div className="space-y-3">
-        {itens.map((item, idx) => (
-          <LinhaItem
-            key={idx}
-            item={item}
-            indice={idx}
-            total={itens.length}
-            produto={item.produtoId ? produtos.find((p) => p.id === item.produtoId) ?? null : null}
-            onMudar={(m) => atualizar(idx, m)}
-            onRemover={() => removerItem(idx)}
-          />
-        ))}
-      </div>
-
-      <button
-        type="button"
-        onClick={adicionarItem}
-        className="mt-3 w-full rounded-lg border border-dashed border-alelo-300 py-3 text-sm font-medium text-alelo-600 hover:bg-alelo-50"
-      >
-        + Adicionar item
-      </button>
-
-      <datalist id="lista-produtos">
-        {produtos.map((p) => (
-          <option key={p.id} value={p.nome} />
-        ))}
-      </datalist>
-
-      {/* ── fechamento ──────────────────────────────────────────────── */}
-      <div className="mt-5 space-y-3 rounded-xl border border-alelo-100 bg-white p-4">
-        <div className="flex items-baseline justify-between text-sm">
-          <span className="text-neutral-600">Soma dos itens</span>
-          <span className="font-semibold text-alelo-900">{formatarMoeda(somaItens)}</span>
-        </div>
-
+        {/* ── carteira ──────────────────────────────────────────────── */}
         <div>
-          <label className="mb-1 block text-xs font-medium text-neutral-600">
-            Total pago {totalPago.trim() === "" && "(usa a soma acima)"}
-          </label>
-          <input
-            inputMode="decimal"
-            value={totalPago}
-            onChange={(e) => setTotalPago(e.target.value)}
-            placeholder={somaItens > 0 ? somaItens.toFixed(2).replace(".", ",") : "0,00"}
-            className="w-full rounded-lg border border-alelo-200 px-3 py-2 outline-none focus:border-alelo-500"
-          />
-          <p className="mt-1 text-xs text-neutral-400">
-            Só preencha se a nota teve desconto e o valor pago foi diferente da soma. É esse valor
-            que sai do vale.
-          </p>
-        </div>
-
-        <div>
-          <label className="mb-1 block text-xs font-medium text-neutral-600">
-            Foto da nota (opcional)
-          </label>
-          <input
-            type="file"
-            accept="image/*"
-            capture="environment"
-            onChange={selecionarFoto}
-            className="block w-full text-sm text-neutral-500"
-          />
+          <label className="mb-1.5 block text-xs font-medium text-neutral-600">Pago com</label>
+          <div className="grid grid-cols-3 gap-2">
+            {CARTEIRAS.map((c) => {
+              const ativo = carteira === c;
+              const saldo = saldos[c];
+              return (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => setCarteira(c)}
+                  className={`rounded-lg border px-2 py-2 text-center transition-colors ${
+                    ativo
+                      ? "border-alelo-500 bg-alelo-500 text-white"
+                      : "border-alelo-200 bg-white text-neutral-700 hover:bg-alelo-50"
+                  }`}
+                >
+                  <span className="block text-xs font-medium">{ROTULO_CARTEIRA[c]}</span>
+                  {saldo !== undefined && (
+                    <span className={`block text-[10px] ${ativo ? "text-alelo-100" : "text-neutral-400"}`}>
+                      {formatarMoeda(saldo)}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+          {carteira === "outro" && (
+            <p className="mt-1.5 text-xs text-neutral-400">
+              Dinheiro, Pix ou cartão próprio — o gasto entra no histórico mas não debita vale.
+            </p>
+          )}
         </div>
       </div>
+
+      {/* ── itens (só compra de mercado) ────────────────────────────── */}
+      {modo === "mercado" ? (
+        <>
+          <div className="mb-2 flex items-baseline justify-between">
+            <h2 className="text-sm font-medium text-neutral-700">Itens</h2>
+            <span className="text-xs text-neutral-400">{itensValidos.length} lançados</span>
+          </div>
+
+          <div className="space-y-3">
+            {itens.map((item, idx) => (
+              <LinhaItem
+                key={idx}
+                item={item}
+                indice={idx}
+                total={itens.length}
+                produto={item.produtoId ? produtos.find((p) => p.id === item.produtoId) ?? null : null}
+                onMudar={(m) => atualizar(idx, m)}
+                onRemover={() => removerItem(idx)}
+              />
+            ))}
+          </div>
+
+          <button
+            type="button"
+            onClick={adicionarItem}
+            className="mt-3 w-full rounded-lg border border-dashed border-alelo-300 py-3 text-sm font-medium text-alelo-600 hover:bg-alelo-50"
+          >
+            + Adicionar item
+          </button>
+
+          <datalist id="lista-produtos">
+            {produtos.map((p) => (
+              <option key={p.id} value={p.nome} />
+            ))}
+          </datalist>
+
+          <div className="mt-5 space-y-3 rounded-xl border border-alelo-100 bg-white p-4">
+            <div className="flex items-baseline justify-between text-sm">
+              <span className="text-neutral-600">Soma dos itens</span>
+              <span className="font-semibold text-alelo-900">{formatarMoeda(somaItens)}</span>
+            </div>
+
+            <div>
+              <label className="mb-1 block text-xs font-medium text-neutral-600">
+                Total pago {totalPago.trim() === "" && "(usa a soma acima)"}
+              </label>
+              <input
+                inputMode="decimal"
+                value={totalPago}
+                onChange={(e) => setTotalPago(e.target.value)}
+                placeholder={somaItens > 0 ? somaItens.toFixed(2).replace(".", ",") : "0,00"}
+                className="w-full rounded-lg border border-alelo-200 px-3 py-2 outline-none focus:border-alelo-500"
+              />
+              <p className="mt-1 text-xs text-neutral-400">
+                Só preencha se a nota teve desconto e o valor pago foi diferente da soma. É esse
+                valor que sai do vale.
+              </p>
+            </div>
+
+            <FotoOpcional onSelecionar={selecionarFoto} />
+          </div>
+        </>
+      ) : (
+        <div className="space-y-3 rounded-xl border border-alelo-100 bg-white p-4">
+          <div>
+            <label className="mb-1 block text-xs font-medium text-neutral-600">Valor pago</label>
+            <input
+              inputMode="decimal"
+              value={valorAvulso}
+              onChange={(e) => setValorAvulso(e.target.value)}
+              placeholder="0,00"
+              className="w-full rounded-lg border border-alelo-200 px-3 py-2 text-lg outline-none focus:border-alelo-500"
+            />
+          </div>
+          <FotoOpcional onSelecionar={selecionarFoto} rotulo="Foto do comprovante (opcional)" />
+        </div>
+      )}
 
       <button
         onClick={salvar}
         disabled={!podeSalvar}
         className="mt-4 w-full rounded-lg bg-alelo-500 py-3 font-medium text-white transition-colors hover:bg-alelo-600 disabled:opacity-40"
       >
-        {salvando ? "Salvando..." : "Salvar compra"}
+        {salvando ? "Salvando..." : "Salvar"}
       </button>
+    </div>
+  );
+}
+
+function FotoOpcional({
+  onSelecionar,
+  rotulo = "Foto da nota (opcional)",
+}: {
+  onSelecionar: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  rotulo?: string;
+}) {
+  return (
+    <div>
+      <label className="mb-1 block text-xs font-medium text-neutral-600">{rotulo}</label>
+      <input
+        type="file"
+        accept="image/*"
+        capture="environment"
+        onChange={onSelecionar}
+        className="block w-full text-sm text-neutral-500"
+      />
     </div>
   );
 }

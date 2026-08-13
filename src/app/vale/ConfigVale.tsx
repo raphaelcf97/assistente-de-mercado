@@ -4,9 +4,11 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 export default function ConfigVale({
+  carteira,
   valorRecargaInicial,
   diaDoMesInicial,
 }: {
+  carteira: "alimentacao" | "refeicao";
   valorRecargaInicial: number;
   diaDoMesInicial: number;
 }) {
@@ -24,7 +26,11 @@ export default function ConfigVale({
       const res = await fetch("/api/vale/config", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ valor_recarga: Number(valorRecarga), dia_do_mes: Number(diaDoMes) }),
+        body: JSON.stringify({
+          carteira,
+          valor_recarga: Number(valorRecarga),
+          dia_do_mes: Number(diaDoMes),
+        }),
       });
       const data = await res.json();
       if (!res.ok || !data.ok) {
@@ -42,7 +48,9 @@ export default function ConfigVale({
 
   return (
     <form onSubmit={salvar} className="rounded-lg border border-alelo-100 bg-white p-4">
-      <h2 className="mb-3 text-sm font-medium text-alelo-800">Recarga mensal automática</h2>
+      <h2 className="mb-3 text-sm font-medium text-alelo-800">
+        Recarga mensal automática — {carteira === "alimentacao" ? "Alimentação" : "Refeição"}
+      </h2>
       <div className="mb-3 flex gap-3">
         <div className="flex-1">
           <label className="mb-1 block text-xs text-neutral-500">Valor (R$)</label>

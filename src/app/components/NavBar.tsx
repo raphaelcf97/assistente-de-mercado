@@ -7,8 +7,8 @@ const ITENS = [
   { href: "/", label: "Início" },
   { href: "/registrar", label: "Registrar" },
   { href: "/produtos", label: "Produtos" },
-  { href: "/compras", label: "Compras" },
-  { href: "/vale", label: "Vale" },
+  { href: "/compras", label: "Histórico" },
+  { href: "/vale", label: "Vales" },
 ];
 
 export default function NavBar() {

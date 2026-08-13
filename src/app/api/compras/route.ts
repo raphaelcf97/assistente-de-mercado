@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { uploadFotoNota } from "@/lib/storage";
 import { normalizarNome } from "@/lib/matching";
+import { ehCarteiraVale } from "@/lib/carteiras";
 import type { CompraConfirmada } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -111,7 +112,8 @@ export async function POST(request: Request) {
       data_compra: compra.data_compra,
       valor_total: compra.valor_total,
       forma_pagamento_detectada: compra.forma_pagamento_detectada,
-      pago_vale_alimentacao: compra.pago_vale_alimentacao,
+      carteira: compra.carteira,
+      categoria: compra.categoria,
       foto_url: fotoPath,
     })
     .select("id")
@@ -129,14 +131,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ erro: `Falha ao salvar itens: ${erroItens.message}` }, { status: 500 });
   }
 
-  // 6. debita do vale alimentação, se aplicável
-  if (compra.pago_vale_alimentacao) {
+  // 6. debita da carteira que pagou. "outro" (dinheiro, cartão próprio) não
+  //    tem saldo pra debitar — o gasto fica registrado, mas fora do vale.
+  if (ehCarteiraVale(compra.carteira)) {
     await supabase.from("vale_transacoes").insert({
       tipo: "compra",
+      carteira: compra.carteira,
       valor: -Math.abs(compra.valor_total),
       data: compra.data_compra,
       compra_id: compraSalva.id,
-      descricao: `Compra em ${compra.mercado_nome}`,
+      descricao: compra.mercado_nome,
     });
   }
 

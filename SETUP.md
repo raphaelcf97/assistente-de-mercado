@@ -55,6 +55,7 @@ git push -u origin main
 - Ao abrir o app pela primeira vez em cada aparelho, ele vai pedir o PIN definido em `APP_PIN`.
 - Em **Vales** você configura, para **cada carteira** (alimentação e refeição), o valor e o dia da recarga mensal. As duas são independentes — podem cair em dias diferentes.
 - Todo lançamento escolhe de qual carteira saiu: **Alimentação**, **Refeição** ou **Outro** (dinheiro, Pix, cartão próprio — registra o gasto mas não debita vale nenhum).
+- **Insights** é a tela inicial do app. Ela se monta sozinha conforme o histórico cresce: comparação de preço entre mercados (precisa do mesmo produto comprado em 2 lugares), variação de preço ao longo do tempo (mesmo produto em 2 datas), cesta principal, para onde vai o dinheiro, dia da semana mais caro e ritmo de cada vale no mês.
 - Há dois tipos de lançamento em **Registrar**:
   - **Compra de mercado** — com itens; é o que alimenta o histórico de preços.
   - **Gasto fora** — restaurante, bar, lanche, delivery; só lugar, data e valor. Existe para o saldo do vale fechar com a realidade.

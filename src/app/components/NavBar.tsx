@@ -4,9 +4,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const ITENS = [
-  { href: "/", label: "Início" },
   { href: "/registrar", label: "Registrar" },
   { href: "/produtos", label: "Produtos" },
+  { href: "/insights", label: "Insights" },
   { href: "/compras", label: "Histórico" },
   { href: "/vale", label: "Vales" },
 ];
@@ -24,7 +24,7 @@ export default function NavBar() {
           <Link
             key={item.href}
             href={item.href}
-            className={`flex-1 border-t-2 py-3 text-center text-xs font-medium ${
+            className={`flex-1 border-t-2 py-3 text-center text-[11px] font-medium ${
               ativo ? "border-alelo-500 text-alelo-600" : "border-transparent text-neutral-400"
             }`}
           >

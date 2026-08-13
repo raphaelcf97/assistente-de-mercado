@@ -10,7 +10,7 @@ type ItemMedido = {
   preco_total: number;
 };
 
-function paraBase(
+export function paraBase(
   quantidade: number,
   unidade: string
 ): { quantidade: number; unidade: UnidadeBase } | null {

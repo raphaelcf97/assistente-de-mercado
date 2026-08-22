@@ -260,7 +260,28 @@ export function cestaPrincipal(itens: ItemBruto[], limite = 8): ProdutoNaCesta[]
   return resultado.sort((a, b) => b.gasto - a.gasto).slice(0, limite);
 }
 
-// ── 7. Ritmo do vale no mês corrente ────────────────────────────────────
+// ── 7. Ritmo do vale até a próxima recarga ──────────────────────────────
+//
+// "Quanto sobra por dia" só faz sentido contado até o dia em que mais
+// dinheiro entra — a recarga configurada em Vales — e não até o fim do
+// mês civil, que não tem relação nenhuma com o ciclo de cada carteira.
+
+// Próxima ocorrência do dia de recarga a partir de hoje. Se hoje já é o
+// dia da recarga, considera que ela é hoje (0 dias faltando) em vez de
+// pular pro mês seguinte.
+function proximaRecarga(hoje: Date, diaDoMes: number): Date {
+  const hojeMeiaNoite = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
+  let alvo = new Date(hoje.getFullYear(), hoje.getMonth(), diaDoMes);
+  if (alvo.getTime() < hojeMeiaNoite.getTime()) {
+    alvo = new Date(hoje.getFullYear(), hoje.getMonth() + 1, diaDoMes);
+  }
+  return alvo;
+}
+
+function diasEntre(inicio: Date, fim: Date): number {
+  const MS_POR_DIA = 24 * 60 * 60 * 1000;
+  return Math.round((fim.getTime() - inicio.getTime()) / MS_POR_DIA);
+}
 
 export type RitmoCarteira = {
   carteira: string;
@@ -269,32 +290,42 @@ export type RitmoCarteira = {
   saldo: number;
   diasRestantes: number;
   porDiaRestante: number | null;
+  recargaConfigurada: boolean;
 };
 
 export function ritmoDoMes(
   transacoes: { carteira: string; valor: number; data: string }[],
   saldos: Record<string, number>,
+  diasRecarga: Record<string, number>,
   carteiras: string[],
   hoje = new Date()
 ): RitmoCarteira[] {
   const ano = hoje.getFullYear();
   const mes = hoje.getMonth();
   const primeiroDia = new Date(ano, mes, 1).toLocaleDateString("sv-SE");
-  const ultimoDiaMes = new Date(ano, mes + 1, 0).getDate();
-  const diasRestantes = Math.max(0, ultimoDiaMes - hoje.getDate());
+  const hojeMeiaNoite = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
 
   return carteiras.map((carteira) => {
     const doMes = transacoes.filter((t) => t.carteira === carteira && t.data >= primeiroDia);
     const entrou = doMes.filter((t) => t.valor > 0).reduce((s, t) => s + t.valor, 0);
     const saiu = doMes.filter((t) => t.valor < 0).reduce((s, t) => s + Math.abs(t.valor), 0);
     const saldo = saldos[carteira] ?? 0;
+
+    // sem dia de recarga configurado (ainda não veio nenhuma), não há
+    // "próxima recarga" pra contar
+    const diaDoMes = diasRecarga[carteira];
+    const diasRestantes = diaDoMes
+      ? Math.max(0, diasEntre(hojeMeiaNoite, proximaRecarga(hoje, diaDoMes)))
+      : 0;
+
     return {
       carteira,
       entrou,
       saiu,
       saldo,
       diasRestantes,
-      porDiaRestante: diasRestantes > 0 ? saldo / diasRestantes : null,
+      porDiaRestante: diaDoMes && diasRestantes > 0 ? saldo / diasRestantes : null,
+      recargaConfigurada: Boolean(diaDoMes),
     };
   });
 }

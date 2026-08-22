@@ -27,6 +27,7 @@ export default async function InsightsPage() {
     { data: itensRaw },
     { data: transacoes },
     { data: saldoRows },
+    { data: configRows },
   ] = await Promise.all([
     supabase.from("mercados").select("id, nome"),
     supabase.from("produtos").select("id, nome_canonico"),
@@ -34,6 +35,7 @@ export default async function InsightsPage() {
     supabase.from("itens_compra").select("compra_id, produto_id, quantidade, unidade, preco_total"),
     supabase.from("vale_transacoes").select("carteira, valor, data"),
     supabase.from("vale_saldo").select("carteira, saldo"),
+    supabase.from("vale_config").select("carteira, dia_do_mes, ativo"),
   ]);
 
   const nomeMercado = new Map((mercados ?? []).map((m) => [m.id, m.nome]));
@@ -67,6 +69,11 @@ export default async function InsightsPage() {
   const saldos: Record<string, number> = {};
   for (const s of saldoRows ?? []) saldos[s.carteira] = s.saldo;
 
+  // só conta "dias até a recarga" pra carteira que tem recarga ativa
+  // configurada — sem isso não existe uma próxima data pra apontar
+  const diasRecarga: Record<string, number> = {};
+  for (const c of configRows ?? []) if (c.ativo) diasRecarga[c.carteira] = c.dia_do_mes;
+
   const comparativo = comparativoMercados(itens);
   const economia = economiaPotencial(itens);
   const variacoes = variacaoPrecos(itens);
@@ -74,7 +81,7 @@ export default async function InsightsPage() {
   const porCategoria = gastoPorCategoria(compras);
   const porEstabelecimento = gastoPorEstabelecimento(compras);
   const porDia = gastoPorDiaSemana(compras);
-  const ritmo = ritmoDoMes(transacoes ?? [], saldos, [...CARTEIRAS_VALE]);
+  const ritmo = ritmoDoMes(transacoes ?? [], saldos, diasRecarga, [...CARTEIRAS_VALE]);
 
   const destaque = comparativo.find((c) => c.diferencaPct >= 5);
   const totalGasto = compras.reduce((s, c) => s + c.valor_total, 0);
@@ -327,12 +334,19 @@ export default async function InsightsPage() {
               {r.porDiaRestante !== null && r.saldo > 0 && (
                 <p className="mt-2 border-t border-alelo-50 pt-2 text-xs text-neutral-500">
                   Dá <strong className="text-alelo-800">{formatarMoeda(r.porDiaRestante)}</strong> por
-                  dia nos {r.diasRestantes} dias que faltam pro fim do mês.
+                  dia nos {r.diasRestantes} dias que faltam para a próxima recarga.
                 </p>
               )}
               {r.saldo <= 0 && r.entrou > 0 && (
                 <p className="mt-2 border-t border-alelo-50 pt-2 text-xs text-neutral-500">
                   Saldo zerado — a próxima recarga é a que vai repor.
+                </p>
+              )}
+              {r.saldo > 0 && r.porDiaRestante === null && (
+                <p className="mt-2 border-t border-alelo-50 pt-2 text-xs text-neutral-500">
+                  {r.recargaConfigurada
+                    ? "A recarga cai hoje."
+                    : "Configure o dia da recarga acima para ver quanto sobra por dia até lá."}
                 </p>
               )}
             </div>
@@ -390,32 +404,98 @@ function FatiaBarra({ rotulo, valor, pct }: { rotulo: string; valor: number; pct
   );
 }
 
+// Gráfico de barras em SVG: escala com viewBox (fica nítido em qualquer
+// tamanho de tela), grade de referência atrás das barras, valor escrito em
+// cima de cada uma e o dia campeão destacado com cor sólida.
 function GraficoSemana({ dados }: { dados: { dia: string; valor: number }[] }) {
-  const maior = Math.max(...dados.map((d) => d.valor), 1);
-  const campeao = dados.reduce((a, b) => (b.valor > a.valor ? b : a));
+  const maiorValor = Math.max(...dados.map((d) => d.valor), 0);
+  const temDados = maiorValor > 0;
+  const campeao = temDados ? dados.reduce((a, b) => (b.valor > a.valor ? b : a)) : null;
+
+  const LARGURA = 320;
+  const ALTURA = 190;
+  const MARGEM_TOPO = 26; // espaço pro valor acima da barra mais alta
+  const MARGEM_BASE = 22; // espaço pro rótulo do dia
+  const ALTURA_UTIL = ALTURA - MARGEM_TOPO - MARGEM_BASE;
+  const linhaBase = ALTURA - MARGEM_BASE;
+
+  const larguraColuna = LARGURA / dados.length;
+  const larguraBarra = larguraColuna * 0.5;
+
+  // grade de referência em 25/50/75/100% do maior valor do período
+  const grade = temDados ? [0.25, 0.5, 0.75, 1] : [];
 
   return (
     <div>
-      <div className="flex h-32 items-end gap-1.5">
-        {dados.map((d) => (
-          <div key={d.dia} className="flex flex-1 flex-col items-center gap-1">
-            <span className="text-[9px] text-neutral-400">
-              {d.valor > 0 ? Math.round(d.valor) : ""}
-            </span>
-            <div
-              className={`w-full rounded-t ${
-                d.valor === campeao.valor && d.valor > 0
-                  ? "bg-gradient-to-t from-alelo-600 to-alelo-400"
-                  : "bg-alelo-200"
-              }`}
-              style={{ height: `${Math.max(2, (d.valor / maior) * 100)}%` }}
+      <svg
+        viewBox={`0 0 ${LARGURA} ${ALTURA}`}
+        className="w-full"
+        role="img"
+        aria-label={
+          campeao
+            ? `Gasto por dia da semana. Dia mais alto: ${campeao.dia}, ${formatarMoeda(campeao.valor)}.`
+            : "Gasto por dia da semana, sem dados ainda."
+        }
+      >
+        {grade.map((fracao) => {
+          const y = linhaBase - fracao * ALTURA_UTIL;
+          return (
+            <line
+              key={fracao}
+              x1={0}
+              y1={y}
+              x2={LARGURA}
+              y2={y}
+              stroke="var(--color-alelo-50)"
+              strokeWidth={1}
             />
-            <span className="text-[10px] text-neutral-500">{d.dia}</span>
-          </div>
-        ))}
-      </div>
-      {campeao.valor > 0 && (
-        <p className="mt-2 text-xs text-neutral-500">
+          );
+        })}
+        <line x1={0} y1={linhaBase} x2={LARGURA} y2={linhaBase} stroke="var(--color-alelo-200)" strokeWidth={1} />
+
+        {dados.map((d, i) => {
+          const x = i * larguraColuna + (larguraColuna - larguraBarra) / 2;
+          const alturaBarra = temDados ? Math.max(d.valor > 0 ? 3 : 0, (d.valor / maiorValor) * ALTURA_UTIL) : 0;
+          const y = linhaBase - alturaBarra;
+          const ehCampeao = campeao !== null && d.dia === campeao.dia && d.valor === campeao.valor;
+
+          return (
+            <g key={d.dia}>
+              {d.valor > 0 && (
+                <text
+                  x={x + larguraBarra / 2}
+                  y={y - 6}
+                  textAnchor="middle"
+                  fontSize={9}
+                  fill={ehCampeao ? "var(--color-alelo-700)" : "var(--color-alelo-400)"}
+                  fontWeight={ehCampeao ? 600 : 400}
+                >
+                  {Math.round(d.valor)}
+                </text>
+              )}
+              <rect
+                x={x}
+                y={y}
+                width={larguraBarra}
+                height={alturaBarra}
+                rx={3}
+                fill={ehCampeao ? "var(--color-alelo-600)" : "var(--color-alelo-200)"}
+              />
+              <text
+                x={x + larguraColuna / 2}
+                y={ALTURA - 6}
+                textAnchor="middle"
+                fontSize={10}
+                fill="var(--color-alelo-700)"
+              >
+                {d.dia}
+              </text>
+            </g>
+          );
+        })}
+      </svg>
+      {campeao && (
+        <p className="mt-1 text-xs text-neutral-500">
           Seu dia mais caro é <strong className="text-alelo-800">{campeao.dia}</strong>, com{" "}
           {formatarMoeda(campeao.valor)} acumulados.
         </p>

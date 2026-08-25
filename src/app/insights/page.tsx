@@ -9,11 +9,16 @@ import {
   gastoPorCategoria,
   gastoPorDiaSemana,
   gastoPorEstabelecimento,
-  ritmoDoMes,
+  ritmoDoCiclo,
   variacaoPrecos,
+  type ComparativoProduto,
   type CompraBruta,
+  type Fatia,
   type ItemBruto,
+  type ProdutoNaCesta,
+  type VariacaoProduto,
 } from "@/lib/insights";
+import AlternadorPeriodo from "./AlternadorPeriodo";
 
 export const dynamic = "force-dynamic";
 
@@ -33,7 +38,7 @@ export default async function InsightsPage() {
     supabase.from("produtos").select("id, nome_canonico"),
     supabase.from("compras").select("id, data_compra, valor_total, categoria, carteira, mercado_id"),
     supabase.from("itens_compra").select("compra_id, produto_id, quantidade, unidade, preco_total"),
-    supabase.from("vale_transacoes").select("carteira, valor, data"),
+    supabase.from("vale_transacoes").select("carteira, tipo, valor, data"),
     supabase.from("vale_saldo").select("carteira, saldo"),
     supabase.from("vale_config").select("carteira, dia_do_mes, ativo"),
   ]);
@@ -81,7 +86,25 @@ export default async function InsightsPage() {
   const porCategoria = gastoPorCategoria(compras);
   const porEstabelecimento = gastoPorEstabelecimento(compras);
   const porDia = gastoPorDiaSemana(compras);
-  const ritmo = ritmoDoMes(transacoes ?? [], saldos, diasRecarga, [...CARTEIRAS_VALE]);
+  const ritmo = ritmoDoCiclo(transacoes ?? [], saldos, diasRecarga, [...CARTEIRAS_VALE]);
+
+  // recorte "mês corrente" pro alternador Mensal/Total das seções abaixo.
+  // Deliberadamente é o calendário civil, diferente do ciclo de recarga
+  // usado no "Ritmo do vale" acima — aqui a pergunta é "como ando comprando
+  // este mês", não "desde quando essa carteira está valendo".
+  const inicioMes = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toLocaleDateString(
+    "sv-SE"
+  );
+  const itensMes = itens.filter((i) => i.data >= inicioMes);
+  const comprasMes = compras.filter((c) => c.data >= inicioMes);
+
+  const comparativoMes = comparativoMercados(itensMes);
+  const economiaMes = economiaPotencial(itensMes);
+  const variacoesMes = variacaoPrecos(itensMes);
+  const cestaMes = cestaPrincipal(itensMes);
+  const porCategoriaMes = gastoPorCategoria(comprasMes);
+  const porEstabelecimentoMes = gastoPorEstabelecimento(comprasMes);
+  const porDiaMes = gastoPorDiaSemana(comprasMes);
 
   const destaque = comparativo.find((c) => c.diferencaPct >= 5);
   const totalGasto = compras.reduce((s, c) => s + c.valor_total, 0);
@@ -154,54 +177,10 @@ export default async function InsightsPage() {
             : null
         }
       >
-        <div className="space-y-3">
-          {comparativo.slice(0, 8).map((c) => {
-            const maior = c.mercados[c.mercados.length - 1].preco;
-            return (
-              <div key={c.produto_id} className="rounded-xl border border-alelo-100 bg-white p-3">
-                <div className="mb-2 flex items-baseline justify-between gap-2">
-                  <Link
-                    href={`/produtos/${c.produto_id}`}
-                    className="truncate text-sm font-medium text-alelo-800 underline decoration-alelo-200"
-                  >
-                    {c.produto}
-                  </Link>
-                  <span className="shrink-0 text-xs font-medium text-red-600">
-                    +{c.diferencaPct.toFixed(0)}%
-                  </span>
-                </div>
-                <div className="space-y-1.5">
-                  {c.mercados.map((m, i) => (
-                    <div key={m.mercado}>
-                      <div className="mb-0.5 flex items-baseline justify-between text-xs">
-                        <span className={i === 0 ? "font-medium text-emerald-700" : "text-neutral-600"}>
-                          {m.mercado}
-                        </span>
-                        <span className={i === 0 ? "font-medium text-emerald-700" : "text-neutral-500"}>
-                          {formatarMoeda(m.preco)}/{c.unidade}
-                        </span>
-                      </div>
-                      <div className="h-1.5 overflow-hidden rounded-full bg-neutral-100">
-                        <div
-                          className={`h-full rounded-full ${i === 0 ? "bg-emerald-500" : "bg-alelo-300"}`}
-                          style={{ width: `${(m.preco / maior) * 100}%` }}
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        {economia > 0.5 && (
-          <p className="mt-3 rounded-lg bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
-            Somando tudo, comprar sempre no mais barato teria custado{" "}
-            <strong>{formatarMoeda(economia)}</strong> a menos. É uma referência, não uma meta —
-            nem sempre compensa atravessar a cidade por causa disso.
-          </p>
-        )}
+        <AlternadorPeriodo
+          total={<CardComparativo lista={comparativo} economia={economia} />}
+          mensal={<CardComparativo lista={comparativoMes} economia={economiaMes} />}
+        />
       </Secao>
 
       {/* ── variação de preço ─────────────────────────────────────────── */}
@@ -214,41 +193,10 @@ export default async function InsightsPage() {
             : null
         }
       >
-        <div className="space-y-2">
-          {variacoes.slice(0, 8).map((v) => (
-            <div
-              key={v.produto_id}
-              className="flex items-center justify-between gap-3 rounded-lg border border-alelo-100 bg-white p-3"
-            >
-              <div className="min-w-0">
-                <Link
-                  href={`/produtos/${v.produto_id}`}
-                  className="block truncate text-sm font-medium text-alelo-800"
-                >
-                  {v.produto}
-                </Link>
-                <p className="text-xs text-neutral-500">
-                  {formatarMoeda(v.primeiro)} → {formatarMoeda(v.ultimo)} por {v.unidade}
-                </p>
-                <p className="text-[11px] text-neutral-400">
-                  {formatarData(v.dataPrimeiro)} a {formatarData(v.dataUltimo)}
-                </p>
-              </div>
-              <span
-                className={`shrink-0 rounded-full px-2 py-1 text-xs font-semibold ${
-                  v.variacaoPct > 0
-                    ? "bg-red-50 text-red-700"
-                    : v.variacaoPct < 0
-                      ? "bg-emerald-50 text-emerald-700"
-                      : "bg-neutral-100 text-neutral-500"
-                }`}
-              >
-                {v.variacaoPct > 0 ? "↑" : v.variacaoPct < 0 ? "↓" : "="}{" "}
-                {Math.abs(v.variacaoPct).toFixed(0)}%
-              </span>
-            </div>
-          ))}
-        </div>
+        <AlternadorPeriodo
+          total={<CardVariacoes lista={variacoes} />}
+          mensal={<CardVariacoes lista={variacoesMes} />}
+        />
       </Secao>
 
       {/* ── cesta ─────────────────────────────────────────────────────── */}
@@ -257,48 +205,22 @@ export default async function InsightsPage() {
         subtitulo="Produtos por quanto você já gastou neles"
         vazio={cesta.length === 0 ? "Registre uma compra com itens pra ver sua cesta." : null}
       >
-        <div className="space-y-2">
-          {cesta.map((p) => (
-            <div key={p.produto_id}>
-              <div className="mb-1 flex items-baseline justify-between gap-2 text-sm">
-                <Link href={`/produtos/${p.produto_id}`} className="truncate text-neutral-700">
-                  {p.produto}
-                </Link>
-                <span className="shrink-0 font-medium text-alelo-900">
-                  {formatarMoeda(p.gasto)}
-                </span>
-              </div>
-              <div className="h-2 overflow-hidden rounded-full bg-neutral-100">
-                <div
-                  className="h-full rounded-full bg-gradient-to-r from-alelo-400 to-alelo-600"
-                  style={{ width: `${Math.max(2, p.pct)}%` }}
-                />
-              </div>
-            </div>
-          ))}
-        </div>
+        <AlternadorPeriodo
+          total={<CardCesta lista={cesta} />}
+          mensal={<CardCesta lista={cestaMes} />}
+        />
       </Secao>
 
       {/* ── para onde vai o dinheiro ──────────────────────────────────── */}
       <Secao titulo="Para onde vai o dinheiro" subtitulo="Por tipo de gasto" vazio={null}>
-        <div className="mb-4 space-y-2">
-          {porCategoria.map((f) => (
-            <FatiaBarra
-              key={f.rotulo}
-              rotulo={ROTULO_CATEGORIA[f.rotulo as keyof typeof ROTULO_CATEGORIA] ?? f.rotulo}
-              valor={f.valor}
-              pct={f.pct}
-            />
-          ))}
-        </div>
-        <p className="mb-2 text-xs font-medium uppercase tracking-wide text-neutral-400">
-          Por estabelecimento
-        </p>
-        <div className="space-y-2">
-          {porEstabelecimento.slice(0, 6).map((f) => (
-            <FatiaBarra key={f.rotulo} rotulo={f.rotulo} valor={f.valor} pct={f.pct} />
-          ))}
-        </div>
+        <AlternadorPeriodo
+          total={
+            <CardDinheiro porCategoria={porCategoria} porEstabelecimento={porEstabelecimento} />
+          }
+          mensal={
+            <CardDinheiro porCategoria={porCategoriaMes} porEstabelecimento={porEstabelecimentoMes} />
+          }
+        />
       </Secao>
 
       {/* ── dia da semana ─────────────────────────────────────────────── */}
@@ -307,11 +229,18 @@ export default async function InsightsPage() {
         subtitulo="Somando todos os lançamentos por dia da semana"
         vazio={null}
       >
-        <GraficoSemana dados={porDia} />
+        <AlternadorPeriodo
+          total={<GraficoSemana dados={porDia} />}
+          mensal={<GraficoSemana dados={porDiaMes} />}
+        />
       </Secao>
 
       {/* ── ritmo do vale ─────────────────────────────────────────────── */}
-      <Secao titulo="Ritmo do mês" subtitulo="Entradas e saídas de cada vale neste mês" vazio={null}>
+      <Secao
+        titulo="Ritmo do vale"
+        subtitulo="Desde a última recarga de cada carteira, não desde o dia 1º"
+        vazio={null}
+      >
         <div className="space-y-3">
           {ritmo.map((r) => (
             <div key={r.carteira} className="rounded-xl border border-alelo-100 bg-white p-3">
@@ -323,6 +252,11 @@ export default async function InsightsPage() {
                   {formatarMoeda(r.saldo)}
                 </span>
               </div>
+              <p className="mb-1.5 text-[11px] text-neutral-400">
+                {r.inicioCiclo
+                  ? `Ciclo desde ${formatarData(r.inicioCiclo)}`
+                  : "Ainda sem recarga registrada — mostrando o histórico inteiro"}
+              </p>
               <div className="flex gap-4 text-xs text-neutral-500">
                 <span>
                   entrou <strong className="text-emerald-700">{formatarMoeda(r.entrou)}</strong>
@@ -382,6 +316,178 @@ function Secao({
         children
       )}
     </section>
+  );
+}
+
+// Estado vazio compacto pra dentro de um recorte do AlternadorPeriodo — o
+// "vazio" grande da Secao já cobriu o caso "sem dado nenhum, nunca"; este
+// aqui cobre só "sem dado NESTE recorte" (ex.: nada comprado este mês).
+function TextoVazio({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="rounded-lg border border-dashed border-alelo-200 bg-white px-3 py-4 text-center text-xs text-neutral-500">
+      {children}
+    </p>
+  );
+}
+
+function CardComparativo({ lista, economia }: { lista: ComparativoProduto[]; economia: number }) {
+  if (lista.length === 0) {
+    return <TextoVazio>Nada neste recorte com o mesmo produto em dois mercados.</TextoVazio>;
+  }
+  return (
+    <>
+      <div className="space-y-3">
+        {lista.slice(0, 8).map((c) => {
+          const maior = c.mercados[c.mercados.length - 1].preco;
+          return (
+            <div key={c.produto_id} className="rounded-xl border border-alelo-100 bg-white p-3">
+              <div className="mb-2 flex items-baseline justify-between gap-2">
+                <Link
+                  href={`/produtos/${c.produto_id}`}
+                  className="truncate text-sm font-medium text-alelo-800 underline decoration-alelo-200"
+                >
+                  {c.produto}
+                </Link>
+                <span className="shrink-0 text-xs font-medium text-red-600">
+                  +{c.diferencaPct.toFixed(0)}%
+                </span>
+              </div>
+              <div className="space-y-1.5">
+                {c.mercados.map((m, i) => (
+                  <div key={m.mercado}>
+                    <div className="mb-0.5 flex items-baseline justify-between text-xs">
+                      <span className={i === 0 ? "font-medium text-emerald-700" : "text-neutral-600"}>
+                        {m.mercado}
+                      </span>
+                      <span className={i === 0 ? "font-medium text-emerald-700" : "text-neutral-500"}>
+                        {formatarMoeda(m.preco)}/{c.unidade}
+                      </span>
+                    </div>
+                    <div className="h-1.5 overflow-hidden rounded-full bg-neutral-100">
+                      <div
+                        className={`h-full rounded-full ${i === 0 ? "bg-emerald-500" : "bg-alelo-300"}`}
+                        style={{ width: `${(m.preco / maior) * 100}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {economia > 0.5 && (
+        <p className="mt-3 rounded-lg bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
+          Somando tudo, comprar sempre no mais barato teria custado{" "}
+          <strong>{formatarMoeda(economia)}</strong> a menos. É uma referência, não uma meta — nem
+          sempre compensa atravessar a cidade por causa disso.
+        </p>
+      )}
+    </>
+  );
+}
+
+function CardVariacoes({ lista }: { lista: VariacaoProduto[] }) {
+  if (lista.length === 0) {
+    return <TextoVazio>Nada neste recorte com o mesmo produto em duas datas diferentes.</TextoVazio>;
+  }
+  return (
+    <div className="space-y-2">
+      {lista.slice(0, 8).map((v) => (
+        <div
+          key={v.produto_id}
+          className="flex items-center justify-between gap-3 rounded-lg border border-alelo-100 bg-white p-3"
+        >
+          <div className="min-w-0">
+            <Link
+              href={`/produtos/${v.produto_id}`}
+              className="block truncate text-sm font-medium text-alelo-800"
+            >
+              {v.produto}
+            </Link>
+            <p className="text-xs text-neutral-500">
+              {formatarMoeda(v.primeiro)} → {formatarMoeda(v.ultimo)} por {v.unidade}
+            </p>
+            <p className="text-[11px] text-neutral-400">
+              {formatarData(v.dataPrimeiro)} a {formatarData(v.dataUltimo)}
+            </p>
+          </div>
+          <span
+            className={`shrink-0 rounded-full px-2 py-1 text-xs font-semibold ${
+              v.variacaoPct > 0
+                ? "bg-red-50 text-red-700"
+                : v.variacaoPct < 0
+                  ? "bg-emerald-50 text-emerald-700"
+                  : "bg-neutral-100 text-neutral-500"
+            }`}
+          >
+            {v.variacaoPct > 0 ? "↑" : v.variacaoPct < 0 ? "↓" : "="}{" "}
+            {Math.abs(v.variacaoPct).toFixed(0)}%
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function CardCesta({ lista }: { lista: ProdutoNaCesta[] }) {
+  if (lista.length === 0) {
+    return <TextoVazio>Nada lançado neste recorte ainda.</TextoVazio>;
+  }
+  return (
+    <div className="space-y-2">
+      {lista.map((p) => (
+        <div key={p.produto_id}>
+          <div className="mb-1 flex items-baseline justify-between gap-2 text-sm">
+            <Link href={`/produtos/${p.produto_id}`} className="truncate text-neutral-700">
+              {p.produto}
+            </Link>
+            <span className="shrink-0 font-medium text-alelo-900">{formatarMoeda(p.gasto)}</span>
+          </div>
+          <div className="h-2 overflow-hidden rounded-full bg-neutral-100">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-alelo-400 to-alelo-600"
+              style={{ width: `${Math.max(2, p.pct)}%` }}
+            />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function CardDinheiro({
+  porCategoria,
+  porEstabelecimento,
+}: {
+  porCategoria: Fatia[];
+  porEstabelecimento: Fatia[];
+}) {
+  if (porCategoria.length === 0) {
+    return <TextoVazio>Nada lançado neste recorte ainda.</TextoVazio>;
+  }
+  return (
+    <>
+      <div className="mb-4 space-y-2">
+        {porCategoria.map((f) => (
+          <FatiaBarra
+            key={f.rotulo}
+            rotulo={ROTULO_CATEGORIA[f.rotulo as keyof typeof ROTULO_CATEGORIA] ?? f.rotulo}
+            valor={f.valor}
+            pct={f.pct}
+          />
+        ))}
+      </div>
+      <p className="mb-2 text-xs font-medium uppercase tracking-wide text-neutral-400">
+        Por estabelecimento
+      </p>
+      <div className="space-y-2">
+        {porEstabelecimento.slice(0, 6).map((f) => (
+          <FatiaBarra key={f.rotulo} rotulo={f.rotulo} valor={f.valor} pct={f.pct} />
+        ))}
+      </div>
+    </>
   );
 }
 

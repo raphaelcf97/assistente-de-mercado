@@ -273,11 +273,11 @@ export function cestaPrincipal(itens: ItemBruto[], limite = 8): ProdutoNaCesta[]
   return resultado.sort((a, b) => b.gasto - a.gasto).slice(0, limite);
 }
 
-// ── 7. Ritmo do vale até a próxima recarga ──────────────────────────────
+// ── 7. Ritmo do ciclo atual de cada vale ─────────────────────────────────
 //
-// "Quanto sobra por dia" só faz sentido contado até o dia em que mais
-// dinheiro entra — a recarga configurada em Vales — e não até o fim do
-// mês civil, que não tem relação nenhuma com o ciclo de cada carteira.
+// Nem o início nem o fim do balanço usam o calendário civil: começa na
+// última recarga e termina na próxima, porque é esse o intervalo em que o
+// dinheiro da carteira de fato circula.
 
 // Próxima ocorrência do dia de recarga a partir de hoje. Se hoje já é o
 // dia da recarga, considera que ela é hoje (0 dias faltando) em vez de
@@ -304,24 +304,39 @@ export type RitmoCarteira = {
   diasRestantes: number;
   porDiaRestante: number | null;
   recargaConfigurada: boolean;
+  inicioCiclo: string | null; // data da última recarga, ou null se nunca recarregou
 };
 
-export function ritmoDoMes(
-  transacoes: { carteira: string; valor: number; data: string }[],
+// Antes isso somava "entrou"/"saiu" desde o dia 1º do mês civil, que não
+// tem nenhuma relação com o ciclo real da carteira: se a recarga cai dia
+// 22 e hoje é dia 22, o gasto de dias 1-21 pertence ao ciclo ANTERIOR
+// (pago pela recarga de julho), não a este. Misturar os dois no mesmo
+// balde fazia o "ritmo" parecer errado mesmo quando não estava.
+//
+// A referência certa é a última recarga registrada: o ciclo atual começa
+// nela e vai até a próxima. Sem nenhuma recarga no histórico ainda, cai no
+// histórico inteiro por falta de um marco pra cortar.
+export function ritmoDoCiclo(
+  transacoes: { carteira: string; tipo: string; valor: number; data: string }[],
   saldos: Record<string, number>,
   diasRecarga: Record<string, number>,
   carteiras: string[],
   hoje = new Date()
 ): RitmoCarteira[] {
-  const ano = hoje.getFullYear();
-  const mes = hoje.getMonth();
-  const primeiroDia = new Date(ano, mes, 1).toLocaleDateString("sv-SE");
+  const hojeISO = hoje.toLocaleDateString("sv-SE");
   const hojeMeiaNoite = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
 
   return carteiras.map((carteira) => {
-    const doMes = transacoes.filter((t) => t.carteira === carteira && t.data >= primeiroDia);
-    const entrou = doMes.filter((t) => t.valor > 0).reduce((s, t) => s + t.valor, 0);
-    const saiu = doMes.filter((t) => t.valor < 0).reduce((s, t) => s + Math.abs(t.valor), 0);
+    const daCarteira = transacoes.filter((t) => t.carteira === carteira);
+
+    const ultimaRecarga = daCarteira
+      .filter((t) => t.tipo === "recarga" && t.data <= hojeISO)
+      .sort((a, b) => b.data.localeCompare(a.data))[0];
+    const inicioCiclo = ultimaRecarga?.data ?? null;
+
+    const doCiclo = inicioCiclo ? daCarteira.filter((t) => t.data >= inicioCiclo) : daCarteira;
+    const entrou = doCiclo.filter((t) => t.valor > 0).reduce((s, t) => s + t.valor, 0);
+    const saiu = doCiclo.filter((t) => t.valor < 0).reduce((s, t) => s + Math.abs(t.valor), 0);
     const saldo = saldos[carteira] ?? 0;
 
     // sem dia de recarga configurado (ainda não veio nenhuma), não há
@@ -339,6 +354,7 @@ export function ritmoDoMes(
       diasRestantes,
       porDiaRestante: diaDoMes && diasRestantes > 0 ? saldo / diasRestantes : null,
       recargaConfigurada: Boolean(diaDoMes),
+      inicioCiclo,
     };
   });
 }

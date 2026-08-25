@@ -5,6 +5,7 @@
 // é pior que insight nenhum: ele parece uma informação.
 
 import { paraBase, type UnidadeBase } from "@/lib/preco-unitario";
+import { normalizarNome } from "@/lib/matching";
 
 export type ItemBruto = {
   produto_id: string;
@@ -25,6 +26,17 @@ export type CompraBruta = {
   mercado_nome: string;
 };
 
+// Produtos que aparecem na nota mas não fazem sentido rastrear por preço:
+// sacola é cobrada por unidade e não é algo que valha comparar entre
+// mercados ou acompanhar variação — é ruído nos insights de preço, embora
+// o valor gasto nela continue contando normalmente no total da compra.
+const IGNORADOS_EM_INSIGHTS_DE_PRECO = ["sacola"];
+
+function ehIgnoradoEmPreco(nomeProduto: string): boolean {
+  const normalizado = normalizarNome(nomeProduto);
+  return IGNORADOS_EM_INSIGHTS_DE_PRECO.some((termo) => normalizado.includes(termo));
+}
+
 // Um item só entra nas contas de preço se dá pra convertê-lo para uma base
 // comparável. Item sem medida informada fica de fora — não dá pra dizer se
 // R$8,90 é caro sem saber de quanto.
@@ -33,6 +45,7 @@ type ItemNormalizado = ItemBruto & { base: number; unidadeBase: UnidadeBase };
 function normalizar(itens: ItemBruto[]): ItemNormalizado[] {
   const saida: ItemNormalizado[] = [];
   for (const item of itens) {
+    if (ehIgnoradoEmPreco(item.produto_nome)) continue;
     if (!item.unidade || !item.quantidade || item.quantidade <= 0) continue;
     const base = paraBase(item.quantidade, item.unidade);
     if (!base || base.quantidade <= 0) continue;

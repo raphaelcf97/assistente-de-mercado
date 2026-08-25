@@ -296,6 +296,25 @@ function diasEntre(inicio: Date, fim: Date): number {
   return Math.round((fim.getTime() - inicio.getTime()) / MS_POR_DIA);
 }
 
+// O alternador Mensal/Total do resto da página usa esse mesmo corte de
+// "última recarga", agora entre QUALQUER carteira (não uma só, como no
+// ritmo acima) — a pergunta ali é "desde quando o dinheiro que estou
+// gastando agora entrou", não "desde quando essa carteira específica
+// recarregou". Cobre o caso descrito pelo usuário: o vale recarrega
+// alguns dias antes da virada do mês, com o valor já "referente ao mês
+// seguinte" — nesse dia, pra ele, o "mês" que está em curso já mudou,
+// mesmo que o calendário ainda não tenha virado a página.
+export function inicioDoPeriodoAtual(
+  transacoes: { tipo: string; data: string }[],
+  hoje = new Date()
+): string | null {
+  const hojeISO = hoje.toLocaleDateString("sv-SE");
+  const recargas = transacoes
+    .filter((t) => t.tipo === "recarga" && t.data <= hojeISO)
+    .sort((a, b) => b.data.localeCompare(a.data));
+  return recargas[0]?.data ?? null;
+}
+
 export type RitmoCarteira = {
   carteira: string;
   entrou: number;

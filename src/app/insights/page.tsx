@@ -9,6 +9,7 @@ import {
   gastoPorCategoria,
   gastoPorDiaSemana,
   gastoPorEstabelecimento,
+  inicioDoPeriodoAtual,
   ritmoDoCiclo,
   variacaoPrecos,
   type ComparativoProduto,
@@ -89,14 +90,16 @@ export default async function InsightsPage() {
   const ritmo = ritmoDoCiclo(transacoes ?? [], saldos, diasRecarga, [...CARTEIRAS_VALE]);
 
   // recorte "mês corrente" pro alternador Mensal/Total das seções abaixo.
-  // Deliberadamente é o calendário civil, diferente do ciclo de recarga
-  // usado no "Ritmo do vale" acima — aqui a pergunta é "como ando comprando
-  // este mês", não "desde quando essa carteira está valendo".
-  const inicioMes = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toLocaleDateString(
-    "sv-SE"
-  );
-  const itensMes = itens.filter((i) => i.data >= inicioMes);
-  const comprasMes = compras.filter((c) => c.data >= inicioMes);
+  // Não é o calendário civil: é desde a última recarga de QUALQUER carteira
+  // (mesmo corte de "Ritmo do vale", agora sem prender a uma carteira só) —
+  // se o crédito de setembro já caiu em agosto, pra quem usa o app o "mês"
+  // que está em curso já virou, calendário nenhum. Sem nenhuma recarga no
+  // histórico ainda, cai no histórico inteiro (Mensal = Total).
+  const inicioPeriodoAtual = inicioDoPeriodoAtual(transacoes ?? []);
+  const itensMes = inicioPeriodoAtual ? itens.filter((i) => i.data >= inicioPeriodoAtual) : itens;
+  const comprasMes = inicioPeriodoAtual
+    ? compras.filter((c) => c.data >= inicioPeriodoAtual)
+    : compras;
 
   const comparativoMes = comparativoMercados(itensMes);
   const economiaMes = economiaPotencial(itensMes);
@@ -105,6 +108,8 @@ export default async function InsightsPage() {
   const porCategoriaMes = gastoPorCategoria(comprasMes);
   const porEstabelecimentoMes = gastoPorEstabelecimento(comprasMes);
   const porDiaMes = gastoPorDiaSemana(comprasMes);
+
+  const desdeMensal = inicioPeriodoAtual ? formatarData(inicioPeriodoAtual) : null;
 
   const destaque = comparativo.find((c) => c.diferencaPct >= 5);
   const totalGasto = compras.reduce((s, c) => s + c.valor_total, 0);
@@ -178,6 +183,7 @@ export default async function InsightsPage() {
         }
       >
         <AlternadorPeriodo
+          desdeMensal={desdeMensal}
           total={<CardComparativo lista={comparativo} economia={economia} />}
           mensal={<CardComparativo lista={comparativoMes} economia={economiaMes} />}
         />
@@ -194,6 +200,7 @@ export default async function InsightsPage() {
         }
       >
         <AlternadorPeriodo
+          desdeMensal={desdeMensal}
           total={<CardVariacoes lista={variacoes} />}
           mensal={<CardVariacoes lista={variacoesMes} />}
         />
@@ -206,6 +213,7 @@ export default async function InsightsPage() {
         vazio={cesta.length === 0 ? "Registre uma compra com itens pra ver sua cesta." : null}
       >
         <AlternadorPeriodo
+          desdeMensal={desdeMensal}
           total={<CardCesta lista={cesta} />}
           mensal={<CardCesta lista={cestaMes} />}
         />
@@ -214,6 +222,7 @@ export default async function InsightsPage() {
       {/* ── para onde vai o dinheiro ──────────────────────────────────── */}
       <Secao titulo="Para onde vai o dinheiro" subtitulo="Por tipo de gasto" vazio={null}>
         <AlternadorPeriodo
+          desdeMensal={desdeMensal}
           total={
             <CardDinheiro porCategoria={porCategoria} porEstabelecimento={porEstabelecimento} />
           }
@@ -230,6 +239,7 @@ export default async function InsightsPage() {
         vazio={null}
       >
         <AlternadorPeriodo
+          desdeMensal={desdeMensal}
           total={<GraficoSemana dados={porDia} />}
           mensal={<GraficoSemana dados={porDiaMes} />}
         />
